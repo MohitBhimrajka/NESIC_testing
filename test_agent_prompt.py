@@ -149,11 +149,12 @@ def generate_content(client: genai.Client, prompt: str, output_path: Path) -> Di
             "error": str(e)
         }
 
-def get_user_input() -> tuple[str, Optional[str], Optional[str], list[str], list[tuple[str, str]]]:
-    """Get company name, optional identifiers, languages, and prompts from user input."""
+def get_user_input() -> tuple[str, Optional[str], Optional[str], list[str], list[tuple[str, str]], str]:
+    """Get company name, optional identifiers, languages, prompts, and context company name from user input."""
     company_name = input("\nEnter company name: ")
     ticker = input("Enter Stock Ticker Symbol (optional, press Enter to skip): ").strip() or None
     industry = input("Enter Primary Industry (optional, press Enter to skip): ").strip() or None
+    context_company_name = input("Enter Context Company Name (default is NESIC): ").strip() or "NESIC"
 
     print("\nAvailable languages:")
     for key, lang in AVAILABLE_LANGUAGES.items():
@@ -201,9 +202,9 @@ def get_user_input() -> tuple[str, Optional[str], Optional[str], list[str], list
         except ValueError:
             print("Invalid input. Please enter numbers separated by commas.")
 
-    return company_name, ticker, industry, language_keys, selected_prompts
+    return company_name, ticker, industry, language_keys, selected_prompts, context_company_name
 
-def generate_all_prompts(company_name: str, language: str, selected_prompts: list[tuple[str, str]], ticker: Optional[str] = None, industry: Optional[str] = None, progress=None, language_task_id=None):
+def generate_all_prompts(company_name: str, language: str, selected_prompts: list[tuple[str, str]], ticker: Optional[str] = None, industry: Optional[str] = None, context_company_name: str = "NESIC", progress=None, language_task_id=None):
     """Generate content for selected prompts in parallel, passing identifiers."""
     start_time = time.time()
 
@@ -238,7 +239,8 @@ def generate_all_prompts(company_name: str, language: str, selected_prompts: lis
         "timestamp": datetime.now().isoformat(),
         "sections": [section[0] for section in selected_prompts],  # Only selected sections
         "model": LLM_MODEL,
-        "temperature": LLM_TEMPERATURE
+        "temperature": LLM_TEMPERATURE,
+        "context_company_name": context_company_name
     }
     with open(misc_dir / "generation_config.yaml", "w") as f:
         yaml.dump(config, f)
@@ -274,7 +276,10 @@ def generate_all_prompts(company_name: str, language: str, selected_prompts: lis
             # Get the prompt function from the prompt_testing module
             prompt_func = getattr(prompt_testing, prompt_func_name)
             # *** Pass the identifiers to the prompt function ***
-            prompt = prompt_func(company_name, language, ticker=ticker, industry=industry)
+            if prompt_name == "account_strategy":
+                prompt = prompt_func(company_name, language, ticker=ticker, industry=industry, context_company_name=context_company_name)
+            else:
+                prompt = prompt_func(company_name, language, ticker=ticker, industry=industry)
             output_path = markdown_dir / f"{prompt_name}.md"
 
             future = executor.submit(generate_content, client, prompt, output_path)
@@ -337,6 +342,7 @@ def generate_all_prompts(company_name: str, language: str, selected_prompts: lis
             "language": language,
             "model": LLM_MODEL,
             "temperature": LLM_TEMPERATURE,
+            "context_company_name": context_company_name,
             "successful_prompts": sum(1 for r in results.values() if r.get("status") == "success"),
             "failed_prompts": sum(1 for r in results.values() if r.get("status") in ["error", "interrupted"]),
             "interrupted": shutdown_requested
@@ -353,16 +359,17 @@ def generate_all_prompts(company_name: str, language: str, selected_prompts: lis
 def main():
     try:
         # Get user input including optional identifiers
-        company_name, ticker, industry, language_keys, selected_prompts = get_user_input()
+        company_name, ticker, industry, language_keys, selected_prompts, context_company_name = get_user_input()
 
         tasks = []
         for language_key in language_keys:
             language = AVAILABLE_LANGUAGES[language_key]
             console.print(f"\nGenerating prompts for {company_name} (Ticker: {ticker or 'N/A'}, Industry: {industry or 'N/A'}) in {language}...")
             console.print(f"Using model: {LLM_MODEL} with temperature: {LLM_TEMPERATURE}")
+            console.print(f"Context Company: {context_company_name}")
             console.print("Output will be saved in the 'output' directory.\n")
             # Store identifiers with the task
-            tasks.append((company_name, language, ticker, industry))
+            tasks.append((company_name, language, ticker, industry, context_company_name))
 
         # Calculate optimal number of workers for language-level parallelization
         # Adjusted calculation slightly based on potential parallel API limits
@@ -384,13 +391,13 @@ def main():
             # Create language-level progress tasks
             language_tasks = {
                 lang: progress.add_task(f"[cyan]{lang} Progress", total=len(selected_prompts))
-                for _, lang, _, _ in tasks # Iterate through tasks to get lang
+                for _, lang, _, _, _ in tasks # Iterate through tasks to get lang
             }
 
             with ThreadPoolExecutor(max_workers=max_workers_languages) as executor:
                 futures = []
                 # Unpack identifiers when submitting
-                for company, lang, tk, ind in tasks:
+                for company, lang, tk, ind, ctx in tasks:
                     if shutdown_requested:
                         break
                     future = executor.submit(
@@ -400,6 +407,7 @@ def main():
                         selected_prompts,  # Pass selected prompts
                         ticker=tk,         # Pass ticker
                         industry=ind,       # Pass industry
+                        context_company_name=ctx,  # Pass context company name
                         progress=progress,
                         language_task_id=language_tasks[lang]
                     )

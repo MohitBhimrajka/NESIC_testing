@@ -1312,13 +1312,13 @@ def get_account_strategy_prompt(company_name: str, language: str = "Japanese", t
     """
     Generates a prompt for creating a comprehensive 3-year Account Strategy Action Plan
     specifically for {company_name}, leveraging NESIC's official context and capabilities,
-    with enhanced entity focus.
+    with enhanced entity focus and explicit NESIC context.
     """
     context_str = f"**{company_name}**"
     if ticker: context_str += f" (Ticker: {ticker})"
     if industry: context_str += f" (Industry: {industry})"
 
-    # Prepare formatted instruction blocks
+    # Prepare formatted instruction blocks (ensure these exist and are formatted correctly)
     formatted_additional_instructions = ADDITIONAL_REFINED_INSTRUCTIONS.format(company_name=company_name, ticker=ticker or "N/A", industry=industry or "N/A")
     formatted_research_depth = RESEARCH_DEPTH_INSTRUCTION.format(company_name=company_name)
     formatted_final_review = FINAL_REVIEW_INSTRUCTION.format(company_name=company_name)
@@ -1327,12 +1327,42 @@ def get_account_strategy_prompt(company_name: str, language: str = "Japanese", t
     formatted_base_formatting = BASE_FORMATTING_INSTRUCTIONS.format(language=language)
     formatted_audience_reminder = AUDIENCE_CONTEXT_REMINDER.format(language=language)
 
+    # --- NEW: Explicit NESIC Capabilities Context ---
+    # This block provides the LLM with key info about NESIC.
+    # This should be based on publicly known information or tailored if internal specifics are allowed.
+    nesic_capabilities_context = textwrap.dedent(f"""\
+    **{context_company_name} Capabilities & Strategic Context (For Your Reference):**
+
+    *   **Core Business Domains:**
+        *   **Digital Transformation (DX) Support:** Providing comprehensive support from consulting and planning to implementation for customer DX initiatives, aiming to solve business challenges through digital technology.
+        *   **System Integration (SI):** Expertise in designing, building, and integrating complex IT systems, leveraging multi-vendor environments and ensuring interoperability.
+        *   **Network Solutions:** Delivering advanced network infrastructure design, implementation (LAN, WAN, Wireless, 5G/Local 5G, SD-WAN), network security, and operational management. Strong capabilities in both enterprise and carrier-grade networks.
+        *   **Cybersecurity:** Offering a wide range of security solutions including consulting, vulnerability assessments, Security Operations Center (SOC) services, Managed Security Service Provider (MSSP) offerings, endpoint and network security, and incident response.
+        *   **Cloud Services:** Supporting multi-cloud environments (AWS, Azure, GCP, Oracle Cloud, etc.), providing migration services, cloud infrastructure management, cost optimization, and hybrid cloud solutions.
+        *   **Managed Services & BPO:** Offering comprehensive IT infrastructure operation, maintenance, 24/7 monitoring, helpdesk support, and IT-related business process outsourcing to improve efficiency and reduce operational burden.
+        *   **Collaboration & Communication:** Implementing and managing unified communications platforms, video conferencing systems, contact center solutions, and tools for enhancing workplace communication and productivity.
+        *   **IoT & Data Analytics:** Integrating IoT platforms, supporting data collection and visualization, and providing data analysis support, potentially leveraging advanced AI capabilities from the NEC group.
+        *   **Physical Security & Facility Management:** Integrating IT with physical security systems (access control, surveillance) and facility management solutions.
+
+    *   **Key Strengths & Differentiators (Publicly Known):**
+        *   **NEC Group Synergy:** Ability to leverage cutting-edge technologies (AI, biometrics, 5G), R&D capabilities, and diverse solutions portfolio from the broader NEC Corporation group.
+        *   **Extensive SI Experience:** Decades of proven experience in delivering large-scale, complex, mission-critical system integration projects across various industries in Japan.
+        *   **Deep Network Expertise:** Recognized technical leadership in network design, implementation, and security across different network types.
+        *   **Nationwide Support Structure:** Robust service infrastructure providing installation, maintenance, and support across Japan.
+        *   **Co-creation Approach:** Strong emphasis on collaborating closely with customers to understand their challenges and co-create optimal solutions.
+        *   **Multi-Vendor Capability:** Ability to integrate and manage solutions from a wide range of technology vendors.
+
+    *   **Primary Target Segments:** Focus on large enterprises, government agencies, public sector organizations, telecommunications carriers, and providers of critical social infrastructure.
+
+    **How to Use This Context:** When analyzing **{company_name}**'s needs, challenges, and initiatives (especially in Sections 4, 6, 7, 8), actively consider how these specific **{context_company_name}** capabilities and strengths could provide relevant, valuable solutions. Combine this provided context with the specific, verified information you discover about **{company_name}** [SSX]. Propose alignments that are logical and leverage these known {context_company_name} strengths. Do not invent {context_company_name} capabilities not listed here or publicly known.
+    """)
+
     nesic_context_note = textwrap.dedent(f"""\
-    **{context_company_name} Context Integration Note:**
-    *   While the objective is to create a plan *for* {context_company_name}, this prompt focuses on gathering verifiable information *about* **{context_str}** using Gemini grounding.
-    *   Explicitly linking {company_name}'s verified needs/initiatives [SSX] to specific, publicly known {context_company_name} solutions/capabilities is encouraged in the analysis sections (e.g., Sections 4, 6, 7, 8).
-    *   However, do NOT invent {context_company_name} capabilities or assume non-public {context_company_name} knowledge. Base {context_company_name} solution matching on publicly available information about {context_company_name}'s offerings (e.g., network integration, cybersecurity, cloud services, managed services) and how they align with the verified needs of {company_name}.
-    *   Any claims about past {context_company_name}-{company_name} interactions require separate verifiable sources [SSY] and should only be included if grounded. Silently omit if not verifiable.
+    **{context_company_name} Context Integration Note (Summary):**
+    *   This plan uses verifiable public data about **{context_str}** to inform strategy *for* {context_company_name}.
+    *   Use the **'{context_company_name} Capabilities & Strategic Context'** section provided above as a primary reference for {context_company_name}'s offerings when identifying potential alignments in Sections 4, 6, 7, 8.
+    *   Base {context_company_name} solution matching on these explicitly stated capabilities and publicly known offerings.
+    *   Only include claims about past {context_company_name}-{company_name} interactions if verifiable via grounding URLs [SSY]; otherwise, omit silently.
     """)
 
     prompt = f"""
@@ -1340,11 +1370,14 @@ def get_account_strategy_prompt(company_name: str, language: str = "Japanese", t
 
 Comprehensive 3-Year Account Strategy Action Plan for {company_name} (Leveraging Verifiable Data for {context_company_name})
 
-Objective: Create a detailed, data-driven account strategy action plan for {company_name} covering the next three fiscal years (e.g., FY2025-FY2027). This plan must be based *exclusively* on verifiable information about {company_name} obtained through grounded sources. The analysis should identify opportunities where known {context_company_name} capabilities could align with {company_name}'s stated needs or challenges. Focus strictly on {context_str}.
+Objective: Create a detailed, data-driven account strategy action plan for {company_name} covering the next three fiscal years (e.g., FY2025-FY2027). This plan must be based *exclusively* on verifiable information about {company_name} obtained through grounded sources. The analysis should identify opportunities where known {context_company_name} capabilities (as outlined below) could align with {company_name}'s stated needs or challenges. Focus strictly on {context_str}.
 
-Target Audience Context: This plan is for internal use by {context_company_name} sales and strategy teams. Recommendations should highlight potential alignments between {company_name}'s verified situation [SSX] and {context_company_name}'s publicly known core competencies. {formatted_audience_reminder}
+Target Audience Context: This plan is for internal use by {context_company_name} sales and strategy teams. Recommendations should highlight potential alignments between {company_name}'s verified situation [SSX] and {context_company_name}'s publicly known core competencies, referencing the capabilities context provided. {formatted_audience_reminder}
 
 {get_language_instruction(language)}
+
+{nesic_capabilities_context}
+
 {nesic_context_note}
 
 Research Requirements:
@@ -1378,7 +1411,7 @@ Research Requirements:
         | Total Revenue (JPY M)   |        |        |        | [SSX]     |
         | YoY Growth Rate (%)     | N/A    |  X.X%  |  Y.Y%  | (Calc)    |
     *   Identify key business segments or geographic regions driving {company_name}'s revenue growth or decline, based on sourced segment data [SSY]. Use latest available data.
-    *   Analyze the implications: Where are the growth areas {context_company_name} could support? Where are the challenges {context_company_name} could help address (e.g., declining segment needing efficiency)? [SSX, SSY]
+    *   Analyze the implications: Where are the growth areas {context_company_name} could support (leveraging capabilities outlined above)? Where are the challenges {context_company_name} could help address (e.g., declining segment needing efficiency via SI or managed services)? [SSX, SSY]
 
 ## 3. Financial Performance Indicators ({company_name})
     *   Present Net Income (Attributable to Parent) and Operating Margin (%) for {company_name} for the last 3 fiscal years in a **perfectly formatted Markdown table** [SSX]. Verify data. Use '-' for missing data points only if needed for table structure.
@@ -1387,7 +1420,7 @@ Research Requirements:
         | Net Income (Parent) (JPY M)      |        |        |        | [SSX]     |
         | Operating Margin (%)             | -      |        |        | [SSY]     |
     *   Note key profitable divisions/segments of {company_name} if identifiable from sourced data [SSZ].
-    *   Analyze implications: Does {company_name}'s financial health suggest capacity for large projects? Are margin pressures creating a need for cost optimization solutions {context_company_name} could provide? [SSX, SSY, SSZ]
+    *   Analyze implications: Does {company_name}'s financial health suggest capacity for large projects (e.g., major SI/DX initiatives)? Are margin pressures creating a need for cost optimization solutions (e.g., managed services, cloud optimization) that {context_company_name} could provide? [SSX, SSY, SSZ]
 
 ## 4. Strategic Initiatives & Potential {context_company_name} Alignments ({company_name})
     *   List **{company_name}**'s major publicly stated strategic initiatives for the next 1-3 years (from latest MTP, Annual Report, IR presentations). Include focus areas (e.g., DX, ESG, Global Expansion, R&D), specific goals, timelines, and investment amounts (with currency) if available [SSX]. Use bullet points:
@@ -1395,13 +1428,13 @@ Research Requirements:
             *   Goal: [e.g., Improve customer experience via new platform] [SSX]
             *   Timeline: [e.g., FY2025-FY2027] [SSX]
             *   Investment: [e.g., Planned ¥X Billion] [SSX]
-            *   **Potential {context_company_name} Alignment:** [e.g., Requires robust network infrastructure upgrade, cloud migration support, cybersecurity for new platform - aligns with {context_company_name}'s known core services.]
+            *   **Potential {context_company_name} Alignment:** [e.g., Requires robust network infrastructure upgrade (NESIC Network Solutions), cloud migration support (NESIC Cloud Services), cybersecurity for new platform (NESIC Cybersecurity) - aligns with {context_company_name}'s core services outlined above.]
         *   **Initiative 2:** [Name/Focus, e.g., "Supply Chain Optimization Project"] [SSY]
             *   Goal: [e.g., Reduce lead times by Y%] [SSY]
             *   Technology Focus: [e.g., Implementing new SCM software, IoT tracking] [SSY]
-            *   **Potential {context_company_name} Alignment:** [e.g., Requires system integration services, secure network for IoT data - potential {context_company_name} role.]
+            *   **Potential {context_company_name} Alignment:** [e.g., Requires system integration services (NESIC SI), secure network for IoT data (NESIC Network/IoT Solutions) - leverage {context_company_name}'s SI experience.]
         *   *(List 3-5 major verifiable initiatives from latest sources for {company_name})*
-    *   For each verifiable initiative of {company_name}, explicitly state how known {context_company_name} capabilities could support its stated goals.
+    *   For each verifiable initiative of {company_name}, explicitly state how the {context_company_name} capabilities outlined in the context section could support its stated goals.
 
 ## 5. Decision-Making Structure & Stakeholders ({company_name})
     *   Outline **{company_name}**'s organizational structure relevant to IT / DX decisions (e.g., Key divisions, role of CIO/CTO, specific DX Steering Committees mentioned in reports) based on latest verifiable data [SSX]. Note location of org charts if found.
@@ -1410,47 +1443,47 @@ Research Requirements:
 
 ## 6. Critical Business Challenges & Potential {context_company_name} Solutions ({company_name})
     *   Enumerate **{company_name}**'s major challenges as explicitly mentioned in official sources (e.g., Annual Report risk section, CEO statements). Categorize if possible (Operational, Technological, Market, Strategic) [SSX].
-        *   Challenge 1: [e.g., Increasing cybersecurity threats targeting industry] [SSX] -> **Potential {context_company_name} Solution:** [e.g., {context_company_name}'s known managed security services (MSSP), Security Operations Center (SOC) capabilities, vulnerability assessments.]
-        *   Challenge 2: [e.g., Aging network infrastructure hindering cloud adoption] [SSY] -> **Potential {context_company_name} Solution:** [e.g., {context_company_name}'s known network assessment, design, and implementation services; SD-WAN solutions.]
-        *   Challenge 3: [e.g., Difficulty integrating data across legacy systems] [SSZ] -> **Potential {context_company_name} Solution:** [e.g., {context_company_name}'s known system integration expertise, potentially leveraging specific platforms if applicable.]
+        *   Challenge 1: [e.g., Increasing cybersecurity threats targeting industry] [SSX] -> **Potential {context_company_name} Solution:** [e.g., Leverage {context_company_name}'s comprehensive Cybersecurity offerings: MSSP, SOC services, vulnerability assessments.]
+        *   Challenge 2: [e.g., Aging network infrastructure hindering cloud adoption] [SSY] -> **Potential {context_company_name} Solution:** [e.g., Utilize {context_company_name}'s Network Solutions expertise for assessment, modern design (SD-WAN), and implementation.]
+        *   Challenge 3: [e.g., Difficulty integrating data across legacy systems for DX] [SSZ] -> **Potential {context_company_name} Solution:** [e.g., Engage {context_company_name}'s System Integration (SI) team, leveraging their multi-vendor experience.]
         *   *(List 3-5 key verifiable challenges for {company_name} from latest sources)*
-    *   For each verifiable challenge of {company_name}, propose specific, relevant {context_company_name} service categories (based on public knowledge) that directly address the verified problem.
+    *   For each verifiable challenge of {company_name}, propose specific, relevant {context_company_name} service categories (referencing the capabilities context provided) that directly address the verified problem.
 
 ## 7. Technology Roadmap & {context_company_name} Capabilities ({company_name})
     *   Summarize **{company_name}**'s likely technology focus areas for the next 3 years based on stated initiatives, investments, and challenges (e.g., Cloud migration (IaaS/PaaS/SaaS adoption focus) [SSX], AI/ML exploration for specific applications [SSY], IoT deployment in manufacturing [SSZ], Upgrading core network [SSW]). Use latest information.
-    *   Map these verifiable focus areas of {company_name} to {context_company_name}'s known public service portfolio (e.g., Multi-cloud integration services, Data analytics platform support, Secure IoT network solutions, Managed network services).
+    *   Map these verifiable focus areas of {company_name} to the {context_company_name} service portfolio outlined in the capabilities context (e.g., Multi-cloud integration services, Data analytics platform support via SI, Secure IoT network solutions, Managed network services).
 
 ## 8. Engagement Strategy Outline (FY2025–2027)
-    *   Provide a high-level quarterly engagement plan concept for {context_company_name}. Focus on *themes* derived from {company_name}'s verified needs, not specific deal values unless grounded. Use a **perfectly formatted Markdown table**. Verify data links. Use '-' for missing data points only if needed for structure.
-        | Fiscal Year / Quarter | Engagement Theme / Focus Area (based on {company_name}'s needs) | Potential {context_company_name} Services to Discuss                    | Target Dept/Stakeholder ({company_name} Concept) | Supporting {company_name} Data Point |
-        |-----------------------|-------------------------------------------------------------------|--------------------------------------------------------|---------------------------------------------------|--------------------------------------|
-        | FY2025 Q1-Q2          | Address Network Readiness for Cloud Migration Initiative          | Network Assessment, SD-WAN consultation/implementation | IT Infrastructure / CIO                           | Initiative from Sec 4 [SSX]          |
-        | FY2025 Q3-Q4          | Enhance Cybersecurity Posture for New Platform Launch             | Managed Security Services, Vulnerability Management    | CISO / Security Team                              | Challenge from Sec 6 [SSY]           |
-        | FY2026 Q1-Q2          | Support Data Integration for Analytics Pilot                      | System Integration Consulting, Data Platform Support   | DX Team / Relevant BU                             | Initiative from Sec 4 [SSZ]           |
-        | FY2026 Q3-Q4          | Explore Operational Efficiency via Managed Services               | Managed IT Services (Network, Server, Cloud)           | IT Operations / CFO                               | Potential need from margin pressure  |
-        | FY2027 onwards        | Scale successful pilots, Strategic partnership discussions        | Full Managed Services, Co-innovation proposals         | CIO / Strategy Dept                               | Based on projected progress          |
-    *   Ensure each proposed engagement theme directly links back to a verified need, challenge, or initiative identified for {company_name} in earlier sections [SSX, SSY, SSZ].
+    *   Provide a high-level quarterly engagement plan concept for {context_company_name}. Focus on *themes* derived from {company_name}'s verified needs, aligned with {context_company_name}'s capabilities. Use a **perfectly formatted Markdown table**. Verify data links. Use '-' for missing data points only if needed for structure.
+        | Fiscal Year / Quarter | Engagement Theme / Focus Area (based on {company_name}'s needs) | Potential {context_company_name} Services to Discuss (Ref. Capabilities Context) | Target Dept/Stakeholder ({company_name} Concept) | Supporting {company_name} Data Point |
+        |-----------------------|-------------------------------------------------------------------|---------------------------------------------------------------------------------|---------------------------------------------------|--------------------------------------|
+        | FY2025 Q1-Q2          | Address Network Readiness for Cloud Migration Initiative          | Network Solutions (Assessment, SD-WAN), Cloud Services (Migration Planning)     | IT Infrastructure / CIO                           | Initiative from Sec 4 [SSX]          |
+        | FY2025 Q3-Q4          | Enhance Cybersecurity Posture for New Platform Launch             | Cybersecurity (MSSP, Vuln. Mgmt.), SI (Secure Implementation)                   | CISO / Security Team                              | Challenge from Sec 6 [SSY]           |
+        | FY2026 Q1-Q2          | Support Data Integration for Analytics Pilot                      | SI (Data Integration), IoT/Data Analytics Support                               | DX Team / Relevant BU                             | Initiative from Sec 4 [SSZ]           |
+        | FY2026 Q3-Q4          | Explore Operational Efficiency via Managed Services               | Managed Services (Network, Server, Cloud), BPO (IT Functions)                   | IT Operations / CFO                               | Potential need from margin pressure  |
+        | FY2027 onwards        | Scale successful pilots, Strategic partnership discussions        | Full Managed Services, DX Consulting, Co-creation Proposals                     | CIO / Strategy Dept                               | Based on projected progress          |
+    *   Ensure each proposed engagement theme directly links back to a verified need, challenge, or initiative identified for {company_name} in earlier sections [SSX, SSY, SSZ] and aligns with stated {context_company_name} capabilities.
 
 ## 9. Competitive Positioning ({company_name}'s View)
     *   Identify **{company_name}**'s existing major IT infrastructure, communications, or system integration vendors/partners *if explicitly mentioned* in verifiable sources [SSX].
-    *   Analyze (based purely on public information): Where does {context_company_name} have potential differentiators against these incumbents for {company_name}? (e.g., Stronger local presence [if true and relevant], specific technical expertise mentioned by {company_name} as needed [SSY], potential cost efficiencies via managed services, {context_company_name} group synergies if applicable and public). Avoid making claims about competitors {context_company_name} cannot substantiate. Silently omit analysis if no verifiable incumbent information is found for {company_name}.
+    *   Analyze (based purely on public information and the provided capabilities context): Where does {context_company_name} have potential differentiators against these incumbents for {company_name}? (e.g., Stronger local support network, specific NEC Group technology advantage [if applicable], proven SI track record in complex projects, comprehensive managed services offering). Avoid making claims about competitors {context_company_name} cannot substantiate. Silently omit analysis if no verifiable incumbent information is found for {company_name}.
 
 ## 10. Success Metrics & Potential KPIs for {context_company_name}
     *   Define 3-5 specific, measurable Key Performance Indicators (KPIs) for {context_company_name}'s engagement with {company_name} over the 3 years. These should be *internal* {context_company_name} goals based on the opportunities identified through verifiable data about {company_name}.
-        *   Example KPI 1: Number of qualified meetings with key stakeholders identified in Sec 5 (Target: X per quarter).
-        *   Example KPI 2: Number of proposals submitted aligning with initiatives in Sec 4 (Target: Y per year).
-        *   Example KPI 3: Penetration of {context_company_name} services into new departments/business units within {company_name} (Target: Enter Z new BUs by FY2027).
-        *   Example KPI 4: Growth in revenue from {company_name} (Target: Achieve A% CAGR over 3 years - *Internal {context_company_name} target based on potential derived from verified {company_name} needs*).
-        *   Example KPI 5: Customer satisfaction score from {company_name} (if measurable).
-    *   Briefly explain the rationale for choosing these KPIs based on the analysis of verifiable {company_name} information.
+        *   Example KPI 1: Number of qualified meetings with key stakeholders identified in Sec 5 focused on strategic initiatives from Sec 4 (Target: X per quarter).
+        *   Example KPI 2: Number of proposals submitted specifically addressing challenges from Sec 6 with solutions from the capabilities context (Target: Y per year).
+        *   Example KPI 3: Penetration of {context_company_name}'s core service areas (e.g., Network, Security, SI, Cloud, Managed Services) within {company_name} (Target: Win projects in Z new service areas by FY2027).
+        *   Example KPI 4: Growth in revenue from {company_name} aligned with strategic engagement themes (Target: Achieve A% CAGR over 3 years - *Internal {context_company_name} target based on potential derived from verified {company_name} needs*).
+        *   Example KPI 5: Achieve high customer satisfaction score from {company_name} on delivered projects (if measurable).
+    *   Briefly explain the rationale for choosing these KPIs based on the analysis of verifiable {company_name} information and alignment with {context_company_name} capabilities.
 
 ## 11. Final 3-Year Account Strategy Summary ({company_name} Focus)
-    *   Provide a concluding single paragraph (~300–500 words) synthesizing the key findings about **{company_name}** (revenue trends [SSX], financial health [SSY], strategic initiatives [SSZ], challenges [SSW]) and reiterating the primary alignment opportunities for {context_company_name} based *only* on the verifiable data presented. Use latest available data. Incorporate key quantitative points.
-    *   Emphasize the data-driven nature of the identified opportunities. Example: "Given {company_name}'s stated FY2025-27 investment of ¥X Billion in DX [SSX] and their cited challenge of integrating legacy systems [SSY], {context_company_name}'s known system integration services present a primary engagement opportunity..."
+    *   Provide a concluding single paragraph (~300–500 words) synthesizing the key findings about **{company_name}** (revenue trends [SSX], financial health [SSY], strategic initiatives [SSZ], challenges [SSW]) and reiterating the primary alignment opportunities for {context_company_name} based *only* on the verifiable data presented and the {context_company_name} capabilities context provided. Use latest available data. Incorporate key quantitative points.
+    *   Emphasize the data-driven nature of the identified opportunities and how {context_company_name}'s specific strengths (e.g., SI experience, network expertise, NEC group synergy) address {company_name}'s needs. Example: "Given {company_name}'s stated FY2025-27 investment of ¥X Billion in DX [SSX] and their cited challenge of integrating legacy systems [SSY], {context_company_name}'s extensive System Integration capabilities, particularly leveraging NEC group technologies, present a primary engagement opportunity..."
     *   Do not introduce new data or {context_company_name}-internal assumptions not linked to the verified {company_name} information and citations.
 
 Source and Accuracy Requirements:
-*   **Accuracy:** All data about **{company_name}** must be grounded in official records [SSX] and reflect the latest available information. {context_company_name} capability mapping should be based on public knowledge. Silently omit unverified data after exhaustive search. Verify table data meticulously.
+*   **Accuracy:** All data about **{company_name}** must be grounded in official records [SSX] and reflect the latest available information. {context_company_name} capability mapping should be based on the provided context and public knowledge. Silently omit unverified data after exhaustive search. Verify table data meticulously.
 *   **Traceability:** Each fact or figure about {company_name} includes [SSX], linking to final source(s).
 *   **Single-Entity Coverage:** Strictly reference **{company_name}**'s data; omit any similarly named entities.
 
