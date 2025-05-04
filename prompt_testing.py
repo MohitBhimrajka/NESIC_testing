@@ -124,9 +124,11 @@ FINAL_SOURCE_LIST_INSTRUCTIONS_TEMPLATE = textwrap.dedent("""\
     **1. Content - MANDATORY URL Type & Source Integrity:**
     *   **Exclusive Source Type:** This list **MUST** contain *only* the specific grounding redirect URLs provided directly by the **Vertex AI Search system** *for this specific query*. These URLs represent the direct grounding evidence used.
     *   **URL Pattern:** These URLs typically follow the pattern: `https://vertexaisearch.cloud.google.com/grounding-api-redirect/...`. **Only URLs matching this exact pattern are permitted.**
-    *   **Strict Filtering:** Absolutely **DO NOT** include any other type of URL (direct website links, news, PDFs, etc.).
+    *   **Strict Filtering:** Absolutely **DO NOT** include any other type of URL (direct website links, news, PDFs found elsewhere, etc.).
+    *   # NEW: Explicitly exclude DOCX citations from this list
+        **Document citations (`[DOCX, reference]`) MUST NOT be included in this final "Sources" list.** Those citations are handled inline only, referencing the provided documents directly. This list is exclusively for the `[SSX]` web grounding URLs.
     *   **CRITICAL - No Hallucination:** **Under NO circumstances should you invent, fabricate, infer, or reuse `vertexaisearch.cloud.google.com/...` URLs** from previous queries or general knowledge if they were not explicitly provided as grounding results *for this query*. If a fact is identified but lacks a corresponding provided grounding URL after exhaustive search, it must be silently omitted from the report body AND no source should be listed for it.
-    *   **Purpose:** This list verifies the specific grounding data provided by Vertex AI Search for this request—not external knowledge or other URLs.
+    *   **Purpose:** This list verifies the specific web grounding data provided by Vertex AI Search for this request—not external knowledge, other URLs, or provided documents.
 
     **2. Formatting and Annotation (CRITICAL FOR PARSING):**
     *   **Source Line Format:** Present each source on a completely new line. Each line **MUST** start with a Markdown list indicator (`* ` or `- `) followed by the hyperlink in Markdown format and then its annotation.
@@ -144,27 +146,29 @@ FINAL_SOURCE_LIST_INSTRUCTIONS_TEMPLATE = textwrap.dedent("""\
     *   **Fact Linkage:** Every grounding URL listed MUST directly correspond to facts/figures/statements present in the report body referenced with the corresponding inline citation [SSX].
 
     **4. Content Selection Based on Verifiable Grounding:**
-    *   **Prerequisite for Inclusion:** Only include facts, figures, details, or quotes in the main report if they can be supported by a verifiable Vertex AI grounding URL from this query after exhaustive search.
-    *   **Omission of Ungrounded Facts/Sections:** If specific information cannot be supported by a verifiable grounding URL after exhaustive search, silently omit that detail. If a whole section cannot be grounded after exhaustive search, retain the section heading but omit the content.
+    *   **Prerequisite for Inclusion:** Only include facts, figures, details, or quotes in the main report if they can be supported by a verifiable Vertex AI grounding URL from this query `[SSX]` or are present in a provided document `[DOCX, reference]` after exhaustive search.
+    *   **Omission of Ungrounded Facts/Sections:** If specific information cannot be supported by a verifiable grounding URL or found in provided documents after exhaustive search, silently omit that detail. If a whole section cannot be grounded/documented after exhaustive search, retain the section heading but omit the content.
 
     **5. Final Check:**
     *   Before concluding the response, review the entire output. Verify:
-        * Exclusive use of valid, provided Vertex AI grounding URLs that support cited facts.
-        * Each source is on a new line and follows the correct format.
-        * Every fact in the report body is supported by an inline citation [SSX] that corresponds to a source in this list.
+        * Exclusive use of valid, provided Vertex AI grounding URLs that support cited facts `[SSX]`.
+        * Correct use of `[DOCX, reference]` for documented facts.
+        * Each source in this list is on a new line and follows the correct format.
+        * Every fact in the report body is supported by an appropriate inline citation (`[SSX]` or `[DOCX]`) that corresponds to a source in this list or a provided document.
         * Every source listed corresponds to at least one inline citation [SSX] in the report body.
     *   The "**Sources**" section must appear only once, at the end of the entire response.
     """)
 
 HANDLING_MISSING_INFO_INSTRUCTION = textwrap.dedent("""\
     *   **Handling Missing or Ungrounded Information:**
-        *   **Exhaustive Research First:** Conduct exhaustive research using primarily official company sources (see `RESEARCH_DEPTH_INSTRUCTION`). Search diligently across *multiple relevant primary sources* (e.g., latest AR, previous AR, Financial Statements + Footnotes, Supplementary Data Packs, Tanshin/Filings, MTP docs, IR presentations, Results Overviews, specific website sections) for *each data point* before concluding information is unavailable. Check document publication dates for recency.
+        *   **Exhaustive Research First:** Conduct exhaustive research using primarily official company sources (see `RESEARCH_DEPTH_INSTRUCTION`). Search diligently across *multiple relevant primary sources* (e.g., latest AR, previous AR, Financial Statements + Footnotes, Supplementary Data Packs, Tanshin/Filings, MTP docs, IR presentations, Results Overviews, specific website sections, **checking alternate language versions of the website**) for *each data point* before concluding information is unavailable. Check document publication dates for recency.
         *   **Grounding Requirement for Inclusion:** Information is included only if:
-            1. The information is located in a reliable source document.
-            2. A corresponding, verifiable Vertex AI grounding URL (matching the pattern `https://vertexaisearch.cloud.google.com/grounding-api-redirect/...`) is provided in the search results for this query.
-        *   **Strict Silent Omission Policy:** If information cannot meet both conditions *after exhaustive research*, omit that specific fact, sentence, or data point entirely. Do **not** include statements like 'Data not found' or 'Information unavailable'. If an entire subsection lacks verifiable grounded data, retain the heading but omit the content. If a table cell requires a placeholder for structure, use only `-` without explanation (verify data is missing *in the source*).
+            1. The information is located in a reliable source document (either provided or found via web search).
+            2. For web-found information, a corresponding, verifiable Vertex AI grounding URL (matching the pattern `https://vertexaisearch.cloud.google.com/grounding-api-redirect/...`) is provided in the search results for this query.
+            3. For provided document information, it is clearly present within the document.
+        *   **Strict Silent Omission Policy:** If information cannot meet these conditions *after exhaustive research*, omit that specific fact, sentence, or data point entirely. Do **not** include statements like 'Data not found' or 'Information unavailable'. If an entire subsection lacks verifiable grounded/documented data, retain the heading but omit the content. If a table cell requires a placeholder for structure, use only `-` without explanation (verify data is missing *in the source*).
         *   **No Inference/Fabrication:** Do not infer, guess, or estimate ungrounded information. Do not fabricate grounding URLs.
-        *   **Cross-Language Search:** If necessary, check other language results; if found, translate only the necessary information and list the corresponding grounding URL.
+        *   **Cross-Language Search:** If necessary, check other language results; if found, translate only the necessary information and cite the corresponding grounding URL `[SSX]` or document reference `[DOCX, reference]`.
     """)
 
 RESEARCH_DEPTH_INSTRUCTION = textwrap.dedent("""\
@@ -174,11 +178,20 @@ RESEARCH_DEPTH_INSTRUCTION = textwrap.dedent("""\
         *   **Primary Source Focus (MANDATORY):** Use official company sources primarily, including:
             *   Latest Annual / Integrated Reports (and previous years *only* for trends/baselines)
             *   Official Financial Statements (Income Statement, Balance Sheet, Cash Flow) & **Crucially: Footnotes**
-            *   Supplementary Financial Data, Investor Databooks, Official Filings (e.g., Tanshin, EDINET, SEC filings, local equivalents)
+            *   Supplementary Financial Data, Investor Databooks, Official Filings (e.g., **Japanese Annual Security Reports / 有価証券報告書 (Yuho)**, Tanshin, EDINET, **SEC Form 20-F/10-K**, local equivalents) - **prioritize these definitive annual filings.**
             *   Investor Relations Presentations & Materials (including Mid-Term Plans, Strategy Day presentations)
             *   Earnings Call Transcripts & Presentations (focus on Q&A sections)
             *   Official Corporate Website sections (e.g., "About Us", "Investor Relations", "Strategy", "Governance", "Sustainability/ESG", "Management/Directors") - check for "last updated" dates.
             *   Official Press Releases detailing strategy, financials, organizational structure, or significant events.
+        *   # NEW: Specific Annual Report Prioritization
+            **CRITICAL: Prioritize full, official annual financial reports (e.g., Annual Security Report/有価証券報告書, Form 20-F/10-K, audited consolidated Financial Statements) over summary reports, preliminary results, or quarterly/half-year interim reports.** Only use interim reports if they are the *sole* source for essential recent data *and* acknowledge this limitation internally. Always seek the comprehensive year-end filing for the period requested.
+        *   # NEW: Complex Website Navigation Awareness
+            **Be aware that consumer-facing websites (e.g., `brand.com`) are often distinct from the Corporate / Investor Relations site (e.g., `brand-global.com/corp/`, `brand.com/ir/`). Navigate diligently:**
+            *   Look for "Investor Relations (IR)", "Shareholders & Investors", "Company Information", or "Corporate" links, often in the site footer or main navigation.
+            *   Within IR sections, common paths are: IR Home -> IR Library / Financial Information / Filings -> Annual Reports / SEC Filings / Financial Results / Security Reports (有価証券報告書).
+            *   Search specifically for the document types mentioned above covering the required fiscal year (e.g., "FY2023 ended March 31, 2024").
+        *   # NEW: Language/Regional Site Variation Handling
+            **Check both Japanese and English versions of the corporate/IR website if necessary.** Content availability (especially specific report types like Security Reports vs. Financial Results summaries) and site structure can differ. If a key document is missing on one language site, check the other before concluding it's unavailable. Prioritize the most comprehensive/official version found.
         *   **Forbidden Sources:** Do NOT use:
             *   Wikipedia
             *   Generic blogs, forums, or social media posts
@@ -196,7 +209,7 @@ RESEARCH_DEPTH_INSTRUCTION = textwrap.dedent("""\
         *   **Calculation Guidelines:** If metrics are not explicitly reported but must be calculated:
             *   Calculate only if all necessary base data (e.g., Net Income, Revenue, Equity, Assets, Debt) is available and verifiable from grounded sources.
             *   Clearly state the formula used, and if averages are used, mention that (e.g., "ROE (Calculated: Net Income / Average Shareholders' Equity)") [SSX]. **Cite the sources for all base data points used in the calculation.**
-        *   **Confirmation of Unavailability (Internal):** Only conclude information is unavailable *internally* after a diligent, confirmed search across *multiple* relevant primary source *types* fails to yield verifiable, grounded data. **Do not state this conclusion in the output.**
+        *   **Confirmation of Unavailability (Internal):** Only conclude information is unavailable *internally* after a diligent, confirmed search across *multiple* relevant primary source *types* (including different website sections and language versions) fails to yield verifiable, grounded data. **Do not state this conclusion in the output.**
     """)
 
 ANALYSIS_SYNTHESIS_INSTRUCTION = textwrap.dedent("""\
@@ -211,11 +224,12 @@ ANALYSIS_SYNTHESIS_INSTRUCTION = textwrap.dedent("""\
 
 INLINE_CITATION_INSTRUCTION = textwrap.dedent("""\
     *   **Inline Citation Requirement:**
-        *   Every factual claim, data point (including figures in tables), direct quote, and specific summary **MUST** include an inline citation in the format `[SSX]`, where X corresponds exactly to the sequential number of the source in the final Sources list.
-        *   Place the inline citation immediately after the supported statement and **before punctuation** when possible (e.g., "Revenue was ¥100B [SS1].").
-        *   If a single sentence contains multiple distinct facts from different sources, cite each appropriately (e.g., "Revenue was ¥100B [SS1] and net income was ¥10B [SS2].").
-        *   If a single source supports multiple facts within a paragraph or table, reuse the same `[SSX]`.
-        *   This ensures that each fact is directly verifiable against the corresponding "Supervity Source X" in the final Sources list.
+        *   # MODIFIED: Mention dual citation types
+            Every factual claim, data point (including figures in tables), direct quote, and specific summary **MUST** include an inline citation indicating its source. Use the format `[SSX]` for information derived from **verifiable web grounding URLs** provided by Vertex AI Search, where X corresponds exactly to the sequential number of the source in the final Sources list. Use the format `[DOCX, reference]` for information derived directly from **provided documents**, where X is the document number and 'reference' is the page/slide/section.
+        *   Place the inline citation immediately after the supported statement and **before punctuation** when possible (e.g., "Revenue was ¥100B [SS1].", "The plan outlines three pillars [DOC1, p.5].").
+        *   If a single sentence contains multiple distinct facts from different sources, cite each appropriately (e.g., "Revenue was ¥100B [SS1] and the internal target is ¥110B [DOC2, Slide 10].").
+        *   If a single source (web or document) supports multiple facts within a paragraph or table, reuse the same citation.
+        *   This ensures that each fact is directly verifiable against either the corresponding "Supervity Source X" in the final Sources list or the referenced provided document.
     """)
 
 SPECIFICITY_INSTRUCTION = textwrap.dedent("""\
@@ -1385,33 +1399,49 @@ def get_account_strategy_prompt(company_name: str, language: str = "Japanese", t
     # --- Format Standard Instruction Blocks ---
     # (Ensure these are correctly defined and accessible)
     formatted_additional_instructions = ADDITIONAL_REFINED_INSTRUCTIONS.format(company_name=company_name, ticker=ticker or "N/A", industry=industry or "N/A")
+    # MODIFIED: Enhance research depth specifically for this prompt context
     formatted_research_depth = RESEARCH_DEPTH_INSTRUCTION.format(company_name=company_name) + textwrap.dedent(f"""\
-        *   **Document Prioritization:** CRITICALLY, prioritize and deeply integrate information found within the **provided documents** [DOCX] alongside the latest official primary web sources for **{company_name}** [SSX]. Use the correct citation type based on origin.
+
+        *   **CRITICAL - Account Strategy Context:** When applying these research instructions for the Account Strategy Prompt, remember the goal is to gather intelligence *on* **{company_name}** specifically *to inform strategy FOR* **{context_company_name}**. Prioritize information revealing needs, plans, challenges, and organizational details relevant to potential {context_company_name} solutions.
+        *   **Document Prioritization for Internal Context:** CRITICALLY, prioritize and deeply integrate information found within the **provided documents** [DOCX] as the primary source for internal strategy, plans, specific challenges, personnel, and relationship history. Supplement with the latest official primary web sources [SSX] for public facts (revenue, official structure, etc.) and broader market context. Use the correct citation type based on origin. If conflicts arise, prioritize latest official provided document for internal strategy/plans, and latest verifiable public web source for public facts.
     """)
     formatted_final_review_base = FINAL_REVIEW_INSTRUCTION.format(company_name=company_name) # Base for later enhancement
     formatted_completion_base = COMPLETION_INSTRUCTION_TEMPLATE.format(company_name=company_name) # Base for later enhancement
+    # MODIFIED: Clarify SSX-only nature of final list
     formatted_final_source_list = FINAL_SOURCE_LIST_INSTRUCTIONS_TEMPLATE.format(language=language) + textwrap.dedent("""\
-        **Note:** This final "Sources" list is *exclusively* for the web grounding URLs cited as `[SSX]`. Document citations `[DOCX, reference]` are inline only.
+
+        **Note for Account Strategy:** This final "Sources" list is *exclusively* for the web grounding URLs cited as `[SSX]`. Document citations `[DOCX, reference]` are inline only and **must not** be included here.
     """)
     formatted_base_formatting = BASE_FORMATTING_INSTRUCTIONS.format(language=language)
-    formatted_audience_reminder = AUDIENCE_CONTEXT_REMINDER.format(language=language)
+    # MODIFIED: Ensure audience context is applied to NESIC's perspective
+    formatted_audience_reminder = AUDIENCE_CONTEXT_REMINDER.format(language=language) + f" Ensure recommendations are actionable for **{context_company_name}**."
 
     # --- Format Document Analysis Instruction ---
-    formatted_document_analysis = DOCUMENT_ANALYSIS_INSTRUCTION.format(company_name=company_name, context_company_name=context_company_name, language=language)
+    # MODIFIED: Slight wording tweak for synthesis context
+    formatted_document_analysis = DOCUMENT_ANALYSIS_INSTRUCTION.format(company_name=company_name, context_company_name=context_company_name, language=language).replace(
+        "analysis and the resulting Account Strategy **MUST** deeply integrate insights extracted",
+        "analysis and the resulting Account Strategy **MUST** deeply synthesize and integrate insights extracted"
+    ).replace(
+        "Do not rely solely on web grounding when relevant document information is available.",
+        "Prioritize document insights for internal context, but synthesize with web grounding for a complete picture."
+    )
+
 
     # --- Assemble the Final Prompt ---
+    # MODIFIED: Added persona clarification and mandatory dual-source emphasis
     prompt = f"""
-{persona}
+{persona} Your goal is to create an actionable plan for {context_company_name}.
 
 **CRITICAL FOCUS:** This entire request is *exclusively* about creating a strategic account plan FOR **{context_company_name}** targeting the specific entity: {context_str}. Verify the identity of **{company_name}** for all sourced information. Avoid unrelated entities.
 
-**PRIMARY CONTEXT SOURCES (MANDATORY INTEGRATION):** This plan MUST be built upon insights derived from **BOTH**:
-1.  **Provided Documents (HIGHEST PRIORITY FOR INTERNAL CONTEXT):** Internal presentations, plans, meeting notes, org charts, etc. (Cite as `[DOCX, reference]`).
-2.  **Verifiable Web Grounding (FOR PUBLIC FACTS):** Public information validated via grounding URLs (Cite as `[SSX]`).
+# MODIFIED: Emphasize dual source mandate
+**PRIMARY CONTEXT SOURCES (MANDATORY SYNTHESIS):** This plan **MUST** be built upon insights derived from **BOTH**:
+1.  **Provided Documents (HIGHEST PRIORITY FOR INTERNAL CONTEXT):** Internal presentations, plans, meeting notes, org charts, etc., specific to {company_name} (Cite as `[DOCX, reference]`). Assume these provide the most current internal view unless contradicted by very recent, verifiable public sources.
+2.  **Verifiable Web Grounding (FOR PUBLIC FACTS & WIDER CONTEXT):** Latest public information (financials, official strategy statements, market news) validated via grounding URLs (Cite as `[SSX]`). Use this to supplement and verify public aspects of the documents.
 
 Comprehensive 3-Year Account Strategy Action Plan: {context_company_name} for {company_name}
 
-Objective: Create a detailed, actionable, and strategically sound account plan for **{context_company_name}** covering the next three fiscal years (e.g., FY2025-FY2027), focused on **{company_name}**. This plan MUST synthesize information from **provided documents** and **verifiable web grounding** to identify strategic opportunities where **{context_company_name}'s** known capabilities (see reference below) align with **{company_name}'s** needs, challenges, and initiatives. The output must be tailored for internal use by **{context_company_name}** sales and strategy teams, highlighting clear value propositions and differentiators.
+Objective: Create a detailed, actionable, and strategically sound account plan for **{context_company_name}** covering the next three fiscal years (e.g., FY2025-FY2027), focused on **{company_name}**. This plan **MUST synthesize information from BOTH provided documents AND verifiable web grounding** to identify strategic opportunities where **{context_company_name}'s** known capabilities (see reference below) align with **{company_name}'s** needs, challenges, and initiatives (both stated publicly and detailed internally). The output must be tailored for internal use by **{context_company_name}** sales and strategy teams, highlighting clear value propositions and differentiators.
 
 Target Audience Context: {formatted_audience_reminder} Recommendations must be actionable for {context_company_name}, focusing on strategic alignment and potential ROI.
 
@@ -1424,7 +1454,11 @@ Target Audience Context: {formatted_audience_reminder} Recommendations must be a
 --- Core Instructions & Constraints ---
 
 Research & Analysis Requirements:
-*   **Dual Source Synthesis (MANDATORY):** Deeply analyze and synthesize information from BOTH provided documents (`[DOCX]`) and web grounding (`[SSX]`). Prioritize documents for internal context, plans, challenges, and personnel details. Use latest verifiable public data for official facts.
+*   # MODIFIED: Explicit dual source synthesis and prioritization logic
+    **Dual Source Synthesis (MANDATORY):** Deeply analyze and synthesize information from BOTH provided documents (`[DOCX]`) AND web grounding (`[SSX]`).
+        *   Prioritize documents for internal strategy, specific plans/timelines, internal challenges/pain points, organizational details, and relationship history.
+        *   Use latest verifiable public web grounding for official public facts (e.g., reported revenue, CEO name, major public announcements) and broader market/industry context.
+        *   If conflicting information exists: Prioritize the **latest official provided document** for internal strategy/plans specific to {company_name}. Prioritize the **latest verifiable public web grounding source** for publicly stated facts. Note significant conflicts impacting strategy.
 *   **Accurate & Distinct Citation (MANDATORY):** Every factual claim about {company_name} MUST have the correct inline citation: `[SSX]` for web grounding, `[DOCX, reference]` for provided documents.
 *   **Exhaustive Review:** Perform thorough review of *all* provided document content (text, tables, visuals) and conduct exhaustive web searches before silently omitting unverified data.
 *   **{context_company_name} Perspective (CRITICAL):** Frame ALL analysis and recommendations from **{context_company_name}'s** viewpoint – "How can WE ({context_company_name}) uniquely help {company_name} achieve their goals and overcome their challenges using OUR capabilities and strengths?".
@@ -1432,10 +1466,10 @@ Research & Analysis Requirements:
 *   **Perfect Formatting:** Adhere strictly to Markdown rules (esp. tables). Verify data accuracy. Use '-' sparingly in tables only if data is confirmed absent in source and needed for structure.
 
 {formatted_document_analysis}
-{HANDLING_MISSING_INFO_INSTRUCTION}
-{formatted_research_depth} # Includes document prioritization
+{HANDLING_MISSING_INFO_INSTRUCTION} # Includes check for alternate language sites
+{formatted_research_depth} # Includes document prioritization logic
 {SPECIFICITY_INSTRUCTION}
-{INLINE_CITATION_INSTRUCTION} # Remind of the two citation types
+{INLINE_CITATION_INSTRUCTION} # Reminds of the two citation types
 {ANALYSIS_SYNTHESIS_INSTRUCTION} # Synthesize from BOTH sources
 
 {formatted_additional_instructions} # Includes single-entity focus, markdown rules etc.
@@ -1443,7 +1477,7 @@ Research & Analysis Requirements:
 --- Account Strategy Plan Structure ---
 
 ## 0. Executive Summary (for {context_company_name})
-    *   Provide a concise (1-2 paragraph) overview of the 3-year strategy for engaging {company_name}.
+    *   Provide a concise (1-2 paragraph) overview of the 3-year strategy for engaging {company_name}, **based on synthesis of DOCX and SSX insights**.
     *   Highlight the top 2-3 strategic opportunities identified for {context_company_name}.
     *   Summarize the core value proposition {context_company_name} offers to {company_name}.
     *   Briefly mention the overall ambition level (e.g., expand footprint, become strategic partner).
@@ -1502,7 +1536,7 @@ Research & Analysis Requirements:
     *   **Analyze {context_company_name} Synergy & Integration Potential:** Map {company_name}'s tech focus to the **{context_company_name}** portfolio. Highlight where **NEC Group synergy** offers unique advantages. Assess how well {context_company_name} solutions can integrate with {company_name}'s existing environment.
 
 ## 8. 3-Year Engagement Strategy & Action Plan (for {context_company_name})
-    *   Provide a high-level, phased engagement plan concept for **{context_company_name}**. Focus on strategic themes derived from {company_name}'s needs, aligned with {context_company_name}'s capabilities and differentiators. Use a **perfectly formatted Markdown table**.
+    *   Provide a high-level, phased engagement plan concept for **{context_company_name}**. Focus on strategic themes derived from {company_name}'s needs (identified via DOCX and SSX), aligned with {context_company_name}'s capabilities and differentiators. Use a **perfectly formatted Markdown table**.
         | Phase / Timeline        | Strategic Engagement Theme (for {context_company_name}) | Key {company_name} Need/Initiative Addressed | Potential {context_company_name} Offerings (Highlight Differentiation) | Target Stakeholders ({company_name}) | Source (Doc/Web) | Proposed Next Steps (Actionable for {context_company_name}) | Potential Hurdles / Considerations (for {context_company_name}) |
         |-------------------------|---------------------------------------------------------|-----------------------------------------------|------------------------------------------------------------------|--------------------------------------|------------------|---------------------------------------------------------|--------------------------------------------------------------------|
         | **Year 1: Build & Prove**|                                                         |                                               |                                                                  |                                      | [DOCX / SSX]     |                                                         |                                                                    |
@@ -1520,7 +1554,7 @@ Research & Analysis Requirements:
     *   **Analyze {context_company_name}'s Differentiators (MANDATORY):** Based on {company_name} info [SSX, DOCX] and {context_company_name} capabilities: Explicitly articulate **{context_company_name}'s** competitive advantages *for this specific client*. Focus on 2-3 key differentiators (e.g., unique NEC Group tech synergy relevant to {company_name}'s industry [DOCX], superior local support structure matching {company_name}'s footprint [DOCX], proven SI methodology for their specific challenge [Public Info]). Avoid generic statements. Silently omit if no verifiable competitor context is found.
 
 ## 10. Success Metrics & KPIs (for {context_company_name} Internal Use)
-    *   Define 3-5 specific, measurable Key Performance Indicators (KPIs) for **{context_company_name}** to track this plan's success over 3 years. Base these on opportunities identified from verifiable {company_name} data.
+    *   Define 3-5 specific, measurable Key Performance Indicators (KPIs) for **{context_company_name}** to track this plan's success over 3 years. Base these on opportunities identified from verifiable {company_name} data [DOCX, SSX].
         *   KPI 1: Number of C-level / Key Stakeholder (Sec 5) meetings secured focusing on strategic initiatives (Sec 4) (Target: X/year).
         *   KPI 2: Pipeline Value (£/¥/$) generated specifically targeting opportunities identified in Sec 4 & 6 (Target: Y value/year).
         *   KPI 3: Win Rate for proposals leveraging key differentiators (Sec 9) (Target: Z%).
@@ -1529,7 +1563,7 @@ Research & Analysis Requirements:
     *   Briefly explain the rationale linking these internal KPIs to successful strategy execution based on the {company_name} analysis.
 
 ## 11. Potential Risks & Mitigation Strategies (for {context_company_name})
-    *   Identify 2-4 key risks **to {context_company_name}** in pursuing this account strategy (e.g., strong incumbent relationship, budget cuts at client, internal {context_company_name} resource constraints, misalignment on strategic direction, failure to demonstrate ROI).
+    *   Identify 2-4 key risks **to {context_company_name}** in pursuing this account strategy (e.g., strong incumbent relationship [DOCX/SSX?], budget cuts at client [DOCX/SSX?], internal {context_company_name} resource constraints, misalignment on strategic direction, failure to demonstrate ROI). Cite source if risk is documented.
     *   For each risk, propose a brief mitigation strategy for the {context_company_name} team (e.g., "Build multi-level relationships beyond IT", "Develop flexible pricing models", "Secure executive sponsorship internally", "Focus on quantifiable business outcomes in proposals").
 
 ## 12. Overall Strategic Recommendation & Rationale (for {context_company_name})
@@ -1546,46 +1580,36 @@ Source and Accuracy Requirements:
 *   **Traceability:** Each fact/figure includes correct citation (`[SSX]` or `[DOCX, reference]`).
 *   **Single-Entity Coverage:** Strictly reference **{company_name}**; omit similarly named entities.
 
-{formatted_completion_template} # Enhanced completion template check
-{formatted_final_review} # Enhanced final review check
+# MODIFIED: Add enhanced completion checks
+{formatted_completion_base + textwrap.dedent('''\
+        7. Information from provided documents is integrated and cited correctly using `[DOCX, reference]` format.
+        8. Executive Summary (Section 0) and {context_company_name} Risks (Section 11) are included and complete.
+        9. Synthesis between document insights and web grounding is evident throughout the plan.
+'''.format(context_company_name=context_company_name))}
+
+# MODIFIED: Add enhanced review checks
+{formatted_final_review_base + textwrap.dedent('''\
+
+        *   **Document Insight Integration & Implications:**
+            *   Insights AND their implications for {context_company_name} from provided documents are incorporated throughout, especially in Sections 2, 4, 5, 6, 7, 9, 12.
+            *   Document citations `[DOCX, reference]` are used correctly and consistently.
+            *   Web grounding `[SSX]` is used appropriately to supplement/verify public facts and provide context.
+            *   **Synthesis:** The analysis clearly integrates insights from BOTH document and web sources where relevant.
+        *   **{context_company_name} Perspective & Value Proposition:**
+            *   The analysis, recommendations, and language consistently reflect the viewpoint, objectives, and value proposition of {context_company_name}.
+            *   Opportunities clearly link {company_name}'s needs (from web/docs) to specific {context_company_name} capabilities AND differentiators.
+        *   **Actionability & Completeness:**
+            *   Executive Summary (Sec 0) provides a clear overview based on the synthesized analysis.
+            *   Engagement Plan (Sec 8) includes actionable next steps for {context_company_name} and considers potential hurdles.
+            *   {context_company_name} Risks (Sec 11) are identified with mitigation strategies relevant to {context_company_name}.
+            *   Final Recommendation (Sec 12) is clear and synthesizes key findings, opportunities, and risks **from {context_company_name}'s perspective**.
+'''.format(context_company_name=context_company_name, company_name=company_name))}
+
 {formatted_final_source_list} # Reminder this is SSX only
 {formatted_base_formatting}
 """
 
     # --- Dynamically Enhance Completion & Review Instructions ---
-    # (Using the corrected method to handle placeholders if they existed in added text)
-
-    # Add check for document citation usage and new sections
-    additional_completion_text = textwrap.dedent("""\
-        7. Information from provided documents is integrated and cited correctly using `[DOCX, reference]` format.
-        8. Executive Summary (Section 0) and NESIC Risks (Section 11) are included and complete.
-    """)
-    prompt = prompt.replace(
-        formatted_completion_base,
-        formatted_completion_base + "\n" + additional_completion_text
-    )
-
-    # Add checks for document integration, NESIC perspective, and new sections/enhanced content
-    additional_review_text_template = textwrap.dedent("""\
-        *   **Document Insight Integration & Implications:**
-            *   Insights AND their implications for {context_company_name} from provided documents are incorporated throughout, especially in Sections 2, 4, 5, 6, 7, 9, 12.
-            *   Document citations `[DOCX, reference]` are used correctly and consistently.
-        *   **{context_company_name} Perspective & Value Proposition:**
-            *   The analysis, recommendations, and language consistently reflect the viewpoint, objectives, and value proposition of {context_company_name}.
-            *   Opportunities clearly link {company_name}'s needs (from web/docs) to specific {context_company_name} capabilities AND differentiators.
-        *   **Actionability & Completeness:**
-            *   Executive Summary (Sec 0) provides a clear overview.
-            *   Engagement Plan (Sec 8) includes actionable next steps and considers potential hurdles.
-            *   NESIC Risks (Sec 11) are identified with mitigation strategies.
-            *   Final Recommendation (Sec 12) is clear and synthesizes key findings, opportunities, and risks.
-    """)
-    formatted_additional_review_text = additional_review_text_template.format(
-        context_company_name=context_company_name,
-        company_name=company_name
-    )
-    prompt = prompt.replace(
-        formatted_final_review_base,
-        formatted_final_review_base + "\n" + formatted_additional_review_text
-    )
+    # NOTE: The enhancement is now directly embedded above using + operator and f-strings/format method where needed.
 
     return prompt

@@ -83,14 +83,69 @@ def format_time(seconds: float) -> str:
     remaining_minutes = minutes % 60
     return f"{hours} hours {remaining_minutes} minutes {remaining_seconds:.2f} seconds"
 
-def generate_content(client: genai.Client, prompt: str, output_path: Path) -> Dict:
+def load_files_for_account_strategy(file_paths: List[str]) -> List[Dict]:
+    """Load files and prepare them for inclusion in the Gemini API request."""
+    loaded_files = []
+    for file_path in file_paths:
+        if not os.path.exists(file_path):
+            logger.warning(f"File not found: {file_path}")
+            continue
+            
+        # Get file extension and determine MIME type
+        _, ext = os.path.splitext(file_path)
+        mime_type = {
+            '.pdf': 'application/pdf',
+            '.doc': 'application/msword',
+            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            '.ppt': 'application/vnd.ms-powerpoint',
+            '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            '.xls': 'application/vnd.ms-excel',
+            '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            '.txt': 'text/plain',
+            '.csv': 'text/csv',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png'
+        }.get(ext.lower(), 'application/octet-stream')
+        
+        try:
+            with open(file_path, 'rb') as f:
+                file_data = f.read()
+                
+            # Create file part for the Gemini API
+            file_part = {
+                'file_data': file_data,
+                'mime_type': mime_type,
+                'file_name': os.path.basename(file_path)
+            }
+            
+            loaded_files.append(file_part)
+            logger.info(f"Successfully loaded file: {file_path}")
+        except Exception as e:
+            logger.error(f"Error loading file {file_path}: {str(e)}")
+    
+    return loaded_files
+
+def generate_content(client: genai.Client, prompt: str, output_path: Path, files: List[Dict] = None) -> Dict:
     """Generate content for a single prompt and save to file. Returns token counts and timing."""
     start_time = time.time()
     try:
+        # Create parts for the request
+        parts = [types.Part.from_text(text=prompt)]
+        
+        # Add files if provided (for account strategy prompt)
+        if files:
+            for file_info in files:
+                file_part = types.Part.from_data(
+                    data=file_info['file_data'],
+                    mime_type=file_info['mime_type']
+                )
+                parts.append(file_part)
+        
         contents = [
             types.Content(
                 role="user",
-                parts=[types.Part.from_text(text=prompt)],
+                parts=parts,
             ),
         ]
         tools = [types.Tool(google_search=types.GoogleSearch())]
@@ -149,8 +204,34 @@ def generate_content(client: genai.Client, prompt: str, output_path: Path) -> Di
             "error": str(e)
         }
 
-def get_user_input() -> tuple[str, Optional[str], Optional[str], list[str], list[tuple[str, str]], str]:
-    """Get company name, optional identifiers, languages, prompts, and context company name from user input."""
+def get_user_file_paths() -> List[str]:
+    """Get file paths from the user for account strategy documents."""
+    print("\nDo you want to upload files for the account strategy prompt? (y/n): ", end="")
+    choice = input().strip().lower()
+    
+    if choice != 'y':
+        return []
+    
+    file_paths = []
+    print("\nEnter file paths one by one (absolute paths or relative to the current directory).")
+    print("Enter an empty line when done.")
+    
+    while True:
+        file_path = input("File path (or empty to finish): ").strip()
+        if not file_path:
+            break
+            
+        # Validate the file path
+        if os.path.exists(file_path):
+            file_paths.append(file_path)
+            print(f"Added: {file_path}")
+        else:
+            print(f"Warning: File not found: {file_path}")
+    
+    return file_paths
+
+def get_user_input() -> tuple[str, Optional[str], Optional[str], list[str], list[tuple[str, str]], str, List[str]]:
+    """Get company name, optional identifiers, languages, prompts, context company name, and file paths from user input."""
     company_name = input("\nEnter company name: ")
     ticker = input("Enter Stock Ticker Symbol (optional, press Enter to skip): ").strip() or None
     industry = input("Enter Primary Industry (optional, press Enter to skip): ").strip() or None
@@ -201,10 +282,15 @@ def get_user_input() -> tuple[str, Optional[str], Optional[str], list[str], list
                 print(f"Invalid selection. Please choose numbers between 0 and {len(PROMPT_FUNCTIONS)}.")
         except ValueError:
             print("Invalid input. Please enter numbers separated by commas.")
+    
+    # Only ask for files if account_strategy is one of the selected prompts
+    file_paths = []
+    if any(prompt_name == "account_strategy" for prompt_name, _ in selected_prompts):
+        file_paths = get_user_file_paths()
 
-    return company_name, ticker, industry, language_keys, selected_prompts, context_company_name
+    return company_name, ticker, industry, language_keys, selected_prompts, context_company_name, file_paths
 
-def generate_all_prompts(company_name: str, language: str, selected_prompts: list[tuple[str, str]], ticker: Optional[str] = None, industry: Optional[str] = None, context_company_name: str = "NESIC", progress=None, language_task_id=None):
+def generate_all_prompts(company_name: str, language: str, selected_prompts: list[tuple[str, str]], ticker: Optional[str] = None, industry: Optional[str] = None, context_company_name: str = "NESIC", file_paths: List[str] = None, progress=None, language_task_id=None):
     """Generate content for selected prompts in parallel, passing identifiers."""
     start_time = time.time()
 
@@ -230,6 +316,19 @@ def generate_all_prompts(company_name: str, language: str, selected_prompts: lis
     for dir_path in [markdown_dir, pdf_dir, misc_dir]:
         dir_path.mkdir(exist_ok=True)
 
+    # Load files for account strategy if needed
+    account_strategy_files = None
+    if file_paths:
+        account_strategy_files = load_files_for_account_strategy(file_paths)
+        
+        # Save file information to misc directory
+        file_info = {
+            "uploaded_files": [os.path.basename(path) for path in file_paths],
+            "timestamp": datetime.now().isoformat()
+        }
+        with open(misc_dir / "uploaded_files.yaml", "w") as f:
+            yaml.dump(file_info, f)
+
     # Save generation config in misc directory
     config = {
         "company_name": company_name,
@@ -240,7 +339,8 @@ def generate_all_prompts(company_name: str, language: str, selected_prompts: lis
         "sections": [section[0] for section in selected_prompts],  # Only selected sections
         "model": LLM_MODEL,
         "temperature": LLM_TEMPERATURE,
-        "context_company_name": context_company_name
+        "context_company_name": context_company_name,
+        "has_uploaded_files": bool(account_strategy_files)
     }
     with open(misc_dir / "generation_config.yaml", "w") as f:
         yaml.dump(config, f)
@@ -275,14 +375,19 @@ def generate_all_prompts(company_name: str, language: str, selected_prompts: lis
 
             # Get the prompt function from the prompt_testing module
             prompt_func = getattr(prompt_testing, prompt_func_name)
+            
             # *** Pass the identifiers to the prompt function ***
             if prompt_name == "account_strategy":
                 prompt = prompt_func(company_name, language, ticker=ticker, industry=industry, context_company_name=context_company_name)
+                # Only pass files to the account_strategy prompt
+                files_for_prompt = account_strategy_files
             else:
                 prompt = prompt_func(company_name, language, ticker=ticker, industry=industry)
+                files_for_prompt = None
+                
             output_path = markdown_dir / f"{prompt_name}.md"
 
-            future = executor.submit(generate_content, client, prompt, output_path)
+            future = executor.submit(generate_content, client, prompt, output_path, files_for_prompt)
             futures.append((prompt_name, future))
 
         # Collect results
@@ -345,7 +450,8 @@ def generate_all_prompts(company_name: str, language: str, selected_prompts: lis
             "context_company_name": context_company_name,
             "successful_prompts": sum(1 for r in results.values() if r.get("status") == "success"),
             "failed_prompts": sum(1 for r in results.values() if r.get("status") in ["error", "interrupted"]),
-            "interrupted": shutdown_requested
+            "interrupted": shutdown_requested,
+            "used_uploaded_files": bool(account_strategy_files)
         }
     }
 
@@ -358,8 +464,8 @@ def generate_all_prompts(company_name: str, language: str, selected_prompts: lis
 
 def main():
     try:
-        # Get user input including optional identifiers
-        company_name, ticker, industry, language_keys, selected_prompts, context_company_name = get_user_input()
+        # Get user input including optional identifiers and file paths
+        company_name, ticker, industry, language_keys, selected_prompts, context_company_name, file_paths = get_user_input()
 
         tasks = []
         for language_key in language_keys:
@@ -367,9 +473,11 @@ def main():
             console.print(f"\nGenerating prompts for {company_name} (Ticker: {ticker or 'N/A'}, Industry: {industry or 'N/A'}) in {language}...")
             console.print(f"Using model: {LLM_MODEL} with temperature: {LLM_TEMPERATURE}")
             console.print(f"Context Company: {context_company_name}")
+            if file_paths:
+                console.print(f"Using {len(file_paths)} uploaded files for account strategy prompt")
             console.print("Output will be saved in the 'output' directory.\n")
             # Store identifiers with the task
-            tasks.append((company_name, language, ticker, industry, context_company_name))
+            tasks.append((company_name, language, ticker, industry, context_company_name, file_paths))
 
         # Calculate optimal number of workers for language-level parallelization
         # Adjusted calculation slightly based on potential parallel API limits
@@ -391,23 +499,24 @@ def main():
             # Create language-level progress tasks
             language_tasks = {
                 lang: progress.add_task(f"[cyan]{lang} Progress", total=len(selected_prompts))
-                for _, lang, _, _, _ in tasks # Iterate through tasks to get lang
+                for _, lang, _, _, _, _ in tasks # Iterate through tasks to get lang
             }
 
             with ThreadPoolExecutor(max_workers=max_workers_languages) as executor:
                 futures = []
                 # Unpack identifiers when submitting
-                for company, lang, tk, ind, ctx in tasks:
+                for company, lang, tk, ind, ctx, files in tasks:
                     if shutdown_requested:
                         break
                     future = executor.submit(
                         generate_all_prompts,
                         company,
                         lang,
-                        selected_prompts,  # Pass selected prompts
-                        ticker=tk,         # Pass ticker
-                        industry=ind,       # Pass industry
+                        selected_prompts,      # Pass selected prompts
+                        ticker=tk,             # Pass ticker
+                        industry=ind,          # Pass industry
                         context_company_name=ctx,  # Pass context company name
+                        file_paths=files,      # Pass file paths
                         progress=progress,
                         language_task_id=language_tasks[lang]
                     )
@@ -427,7 +536,8 @@ def main():
                                     f"Total Execution Time: {format_time(token_stats['summary']['total_execution_time'])}",
                                     f"Total Tokens: {token_stats['summary']['total_tokens']:,}",
                                     f"Successful Prompts: [green]{token_stats['summary']['successful_prompts']}[/]",
-                                    f"Failed Prompts: [red]{token_stats['summary']['failed_prompts']}[/]"
+                                    f"Failed Prompts: [red]{token_stats['summary']['failed_prompts']}[/]",
+                                    f"Used Uploaded Files: {'[green]Yes[/]' if token_stats['summary'].get('used_uploaded_files') else '[yellow]No[/]'}"
                                 ]),
                                 title=f"Results - {lang}",
                                 border_style="cyan"
@@ -462,6 +572,7 @@ def main():
             total_tokens = sum(stats['summary']['total_tokens'] for _, stats, _ in results)
             total_successful = sum(stats['summary']['successful_prompts'] for _, stats, _ in results)
             total_failed = sum(stats['summary']['failed_prompts'] for _, stats, _ in results)
+            used_files = any(stats['summary'].get('used_uploaded_files', False) for _, stats, _ in results)
 
             console.print(Panel.fit(
                 "\n".join([
@@ -469,7 +580,8 @@ def main():
                     f"Total Execution Time: {format_time(total_execution_time)}",
                     f"Total Tokens Across All Languages: {total_tokens:,}",
                     f"Total Successful Prompts: [green]{total_successful}[/]",
-                    f"Total Failed Prompts: [red]{total_failed}[/]"
+                    f"Total Failed Prompts: [red]{total_failed}[/]",
+                    f"Used Uploaded Files: {'[green]Yes[/]' if used_files else '[yellow]No[/]'}"
                 ]),
                 title="Overall Results",
                 border_style="cyan"
