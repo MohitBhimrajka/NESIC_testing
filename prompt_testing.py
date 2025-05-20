@@ -6,6 +6,151 @@ from typing import Optional
 # --- Standard Instruction Blocks ---
 # (Updated with placeholders for formatting)
 
+# --- New Section-Specific Document Handling Function ---
+def get_section_specific_document_instructions(section_name: str) -> str:
+    """
+    Generates specific instructions for handling documents tagged for a particular section.
+    Customizes document handling based on the section type.
+    
+    Args:
+        section_name: The name/type of the section (e.g., "financial", "business_structure", "vision")
+        
+    Returns:
+        A formatted instruction string for handling section-specific documents
+    """
+    # Common document handling instructions
+    common_instructions = textwrap.dedent("""\
+        *   **Section-Specific Document Handling (CRITICAL):**
+            *   Certain documents may be **specifically tagged for this section**. If provided, these documents MUST be treated as the PRIMARY and MOST AUTHORITATIVE source for information in this section.
+            *   Thoroughly analyze ALL provided documents before using web grounding. Extract EVERY relevant data point, insight, and context from these documents first.
+            *   If no documents are provided for this section, rely on web grounding entirely, following standard research procedures.
+            *   When documents ARE provided, use web grounding to:
+                1. Fill gaps not covered in the documents
+                2. Provide broader market/industry context
+                3. Verify public facts (like financial totals) that should align with official disclosures
+                4. Cross-reference the most recent public information if documents may be outdated
+            *   Use the proper citation format: `[DOCX, reference]` for document-sourced information and `[SSX]` for web-grounded information.
+    """)
+    
+    # Section-specific enhancements
+    if section_name == "financial":
+        specific_instructions = textwrap.dedent("""\
+            *   **Financial Document Processing (SPECIALIZED):**
+                *   For financial tables in documents:
+                    1. **Preserve Original Structure:** Maintain the exact segment/region names, time periods, and hierarchical structure
+                    2. **Extract Complete Data Series:** Include ALL columns and rows, not just selected highlights
+                    3. **Maintain Units & Calculations:** Preserve the original currency/units and verify subtotals/totals
+                    4. **Capture Footnotes:** Extract and incorporate any footnotes explaining financial data
+                *   When financial documents contain segment/regional breakdowns:
+                    1. These ALWAYS take precedence over web-grounded segmentation data
+                    2. Use the EXACT naming and classification system from the documents
+                    3. Present the complete table structure including any "Adjustments," "Eliminations," or "Other" categories
+                *   For documents with partial financial time series (e.g., only 1-2 years):
+                    1. Present what is available rather than attempting to complete the series from other sources
+                    2. Clearly note the time period covered (e.g., "FY2022-2023 as reported in document [DOCX]")
+        """)
+    elif section_name == "business_structure":
+        specific_instructions = textwrap.dedent("""\
+            *   **Business Structure Document Processing (SPECIALIZED):**
+                *   For organizational charts and structure documents:
+                    1. **Entity Mapping:** Identify ALL business units, divisions, departments, and subsidiaries
+                    2. **Hierarchy Preservation:** Maintain the exact reporting relationships and organizational levels
+                    3. **Leadership Extraction:** Capture all names, titles, and responsibilities mentioned
+                    4. **Structural Context:** Note if the chart represents functional, geographic, matrix, or hybrid organization
+                *   For segment/region classification documents:
+                    1. Use the EXACT segment/region names and definitions from the documents
+                    2. Maintain any hierarchical segment structure (e.g., main segments with sub-segments)
+                    3. Extract both absolute values AND percentages where available
+                    4. Calculate missing values where possible (e.g., if only % or only absolute values are provided)
+        """)
+    elif section_name == "vision" or section_name == "management_message":
+        specific_instructions = textwrap.dedent("""\
+            *   **Strategic Vision Document Processing (SPECIALIZED):**
+                *   For vision/strategy documents:
+                    1. **Exact Quote Prioritization:** Extract verbatim statements of vision, mission, purpose, and values
+                    2. **Strategic Pillar Identification:** Identify all stated strategic pillars/themes with their explanations
+                    3. **Horizon & Timeframe Capture:** Note the explicit timeframes mentioned (e.g., "Vision 2030")
+                    4. **KPI Linkage:** Connect stated KPIs/metrics specifically mentioned as measuring vision progress
+                *   For executive statements/interviews in documents:
+                    1. Extract COMPLETE quotes with proper attribution (name, title, context) and citation
+                    2. Preserve the exact wording, avoiding paraphrasing
+                    3. Group quotes by themes to identify recurring strategic messages
+                    4. Note the date/context of statements to establish a timeline of strategic communication
+        """)
+    elif section_name == "regulatory" or section_name == "crisis":
+        specific_instructions = textwrap.dedent("""\
+            *   **Regulatory/Risk Document Processing (SPECIALIZED):**
+                *   For regulatory/compliance documents:
+                    1. **Requirement Mapping:** Extract all mentioned regulatory requirements with their status
+                    2. **Agency Identification:** Note all regulatory bodies, agencies, and industry associations mentioned
+                    3. **Timeframe Extraction:** Identify implementation deadlines, compliance dates, and reporting periods
+                    4. **Gap Analysis:** Note any explicitly mentioned compliance gaps or challenges
+                *   For risk/crisis management documents:
+                    1. **Incident Chronology:** Create a timeline of any mentioned incidents with exact dates
+                    2. **Response Capture:** Detail the specific responses, remediation efforts, and outcomes
+                    3. **Preparedness Assessment:** Extract information about contingency plans, drills, and governance
+                    4. **Stakeholder Communication:** Note how incidents were communicated internally and externally
+        """)
+    elif section_name == "digital_transformation":
+        specific_instructions = textwrap.dedent("""\
+            *   **Digital Transformation Document Processing (SPECIALIZED):**
+                *   For DX strategy documents:
+                    1. **Initiative Mapping:** Identify all DX initiatives with their objectives, timelines, and owners
+                    2. **Investment Extraction:** Extract all mentioned investment figures with currency, timeframe, and allocation
+                    3. **Technology Stack Analysis:** Note current and planned technology platforms, vendors, and architectures
+                    4. **Capability Assessment:** Extract any self-assessment of digital maturity or capability gaps
+                *   For DX implementation/case study documents:
+                    1. **Implementation Detail:** Extract specific technologies, methodologies, and implementation approaches
+                    2. **Outcome Measurement:** Note all stated outcomes, ROI figures, and success metrics
+                    3. **Challenge Identification:** Capture explicitly mentioned challenges, roadblocks, and lessons learned
+                    4. **Integration Context:** Understand how specific DX initiatives fit into the broader strategy
+        """)
+    elif section_name == "management_strategy":
+        specific_instructions = textwrap.dedent("""\
+            *   **Management Strategy Document Processing (SPECIALIZED):**
+                *   For mid-term plan (MTP) documents:
+                    1. **Goal Hierarchy:** Identify overarching goals, strategic pillars, and specific objectives
+                    2. **Target Extraction:** Extract ALL stated targets/KPIs with their exact metrics, values, and deadlines
+                    3. **Progress Tracking:** Note any mentioned progress against previous targets
+                    4. **Execution Roadmap:** Capture implementation plans, resource allocation, and governance
+                *   For strategic review/update documents:
+                    1. **Strategy Evolution:** Note any shifts or adjustments in strategic direction
+                    2. **External Factors:** Identify mentioned market conditions, competitive factors, or disruptions
+                    3. **Internal Capability:** Extract assessments of organizational readiness or capability gaps
+                    4. **Strategic Risk:** Capture mentioned risks to strategy execution and mitigation approaches
+        """)
+    elif section_name == "competitive_landscape":
+        specific_instructions = textwrap.dedent("""\
+            *   **Competitive Analysis Document Processing (SPECIALIZED):**
+                *   For competitive landscape documents:
+                    1. **Named Competitor Extraction:** Identify ALL specifically named competitors with their characterizations
+                    2. **Market Share Data:** Extract any market share figures, rankings, or positioning statements
+                    3. **Competitive Dynamic:** Note described patterns of competition, partnership, or industry collaboration
+                    4. **Differentiation Factors:** Capture stated points of differentiation vs. competitors
+                *   For SWOT or strategic position documents:
+                    1. **Strength/Weakness Mapping:** Extract all mentioned internal strengths and weaknesses
+                    2. **Opportunity/Threat Identification:** Capture external opportunities and threats in the competitive context
+                    3. **Strategic Response:** Note planned responses to competitive threats or market opportunities
+                    4. **Capability Gap:** Identify any mentioned capability gaps relative to competitors
+        """)
+    else:  # Default for basic profile and other sections
+        specific_instructions = textwrap.dedent("""\
+            *   **General Document Processing (SPECIALIZED):**
+                *   For corporate profile documents:
+                    1. **Entity Verification:** Confirm the exact legal name, registration details, and corporate structure
+                    2. **Historical Timeline:** Extract foundation dates, major milestones, and organizational evolution
+                    3. **Leadership Identification:** Capture complete leadership rosters with titles and responsibilities
+                    4. **Business Description:** Extract detailed business descriptions, operational scope, and market positioning
+                *   For supplementary documents:
+                    1. **Comprehensive Review:** Analyze ALL sections of documents for relevant information
+                    2. **Cross-Reference:** Connect information across multiple documents to form a complete picture
+                    3. **Recency Priority:** Prioritize the most recent documents when information conflicts
+                    4. **Contextual Integration:** Place extracted information in proper business and industry context
+        """)
+    
+    # Combine common and specific instructions
+    return common_instructions + "\n" + specific_instructions
+
 # --- Enhanced NESIC Capabilities Block ---
 NESIC_CAPABILITIES_CONTEXT = textwrap.dedent("""\
     **NESIC Capabilities & Strategic Context (Reference for Analysis):**
@@ -42,18 +187,63 @@ NESIC_CAPABILITIES_CONTEXT = textwrap.dedent("""\
 
 # NEW common document instruction block
 DOCUMENT_ANALYSIS_INSTRUCTION_COMMON = textwrap.dedent("""\
-    *   **Document Tagging & Sectional Priority (CRITICAL):**
-        *   You may be provided with documents that are **explicitly tagged as relevant to specific sections** of this report.
-        *   When generating a particular section, if a document is tagged for that section, you **MUST** treat its contents as the **ABSOLUTE PRIMARY SOURCE** for information directly pertaining to that section's topics.
-        *   Synthesize insights from these tagged documents first, then supplement with other provided documents or web grounding as necessary for broader context or untagged information.
-        *   If a tagged document provides specific data (e.g., financial breakdowns, project names, stakeholder lists) requested by the current section, **YOU MUST USE AND CITE THAT DOCUMENTED DATA [DOCX, reference]**. Do not seek this specific data from web grounding if a tagged document provides it.
+    *   **CRITICAL: Analysis of Provided Documents (PDFs, PPTXs, etc.):**
+        *   **Priority Source:** You **WILL BE PROVIDED** with relevant documents (e.g., internal presentations, past proposals, meeting notes, org charts). Treat these documents as a **PRIMARY and often MORE CURRENT/DETAILED source of context** than general web search results, especially regarding:
+            *   Specific ongoing projects, initiatives, and timelines.
+            *   Internal challenges, pain points, and stated needs.
+            *   Detailed organizational structure, key personnel, and decision-making processes.
+            *   Relationship history or past engagements between {company_name} and other entities (if mentioned).
+            *   Specific figures, targets, or plans not yet publicly released.
+        *   **Mandatory Integration:** Your analysis and the resulting output **MUST** deeply integrate insights extracted directly from these provided documents. Do not rely solely on web grounding when relevant document information is available.
 
-    *   **Handling Financial Data from Documents (CRITICAL):**
-        *   If a provided document (especially an Excel file, CSV, or clear table within a PDF/PPTX) contains **financial breakdowns by business segment or geographic region for {company_name}**, you **MUST** use this data to populate the respective tables in the financial analysis or business structure sections.
-        *   This document-provided financial breakdown data **OVERRIDES** any conflicting segment/regional financial data found via web grounding. General/consolidated financials can still be cross-verified with web grounding.
-        *   Extract this data meticulously. If an Excel file is provided for financials, its structure (rows/columns for segments/regions) should directly inform your output table.
-        *   Always cite `[DOCX, reference]` for financial data taken directly from provided documents.
-""")
+        *   **Document Tagging & Sectional Priority (CRITICAL):**
+            *   You may be provided with documents that are **explicitly tagged as relevant to specific sections** of this report.
+            *   When generating a particular section, if a document is tagged for that section, you **MUST** treat its contents as the **ABSOLUTE PRIMARY SOURCE** for information directly pertaining to that section's topics.
+            *   Synthesize insights from these tagged documents first, then supplement with other provided documents or web grounding as necessary for broader context or untagged information.
+            *   If a tagged document provides specific data (e.g., financial breakdowns, project names, stakeholder lists) requested by the current section, **YOU MUST USE AND CITE THAT DOCUMENTED DATA [DOCX, reference]**. Do not seek this specific data from web grounding if a tagged document provides it.
+
+        *   **Handling Financial Data from Documents (CRITICAL):**
+            *   If a provided document (especially an Excel file, CSV, or clear table within a PDF/PPTX) contains **financial breakdowns by business segment or geographic region for {company_name}**, you **MUST** use this data to populate the respective tables in the financial analysis or business structure sections.
+            *   This document-provided financial breakdown data **OVERRIDES** any conflicting segment/regional financial data found via web grounding. General/consolidated financials can still be cross-verified with web grounding.
+            *   Extract this data meticulously. If an Excel file is provided for financials, its structure (rows/columns for segments/regions) should directly inform your output table.
+            *   Always cite `[DOCX, reference]` for financial data taken directly from provided documents.
+
+        *   **Table Data Extraction Protocol (CRITICAL):**
+            *   When extracting tabular data from documents, follow these steps:
+                1. **Pre-extraction Assessment:** Before creating any output table, first identify all tables in the documents that contain relevant data for the section. Note their structure, column/row headers, and time periods covered.
+                2. **Complete Extraction:** Extract ALL rows and columns from the original table. Never selectively extract only a portion unless explicitly required by the section.
+                3. **Metadata Preservation:** Maintain all time period information, units (e.g., "JPY millions", "% of total"), and footnotes associated with the table.
+                4. **Structure Matching:** When creating your output table, match the document table's structure closely, particularly for segment/region names and time periods.
+                5. **Calculation Validation:** If the document table includes calculated totals/subtotals, verify these match the component values before including in your output.
+
+        *   **Information Extraction:** Diligently extract information from all parts of the documents:
+            *   **Text:** Key strategies, statements, goals, challenges, personnel names/roles.
+            *   **Tables:** Financial data, project timelines, KPI targets, organizational lists. Extract relevant data accurately.
+            *   **Charts/Graphs:** Summarize the key trends, data points, or conclusions presented visually. Note the existence and location (e.g., "Chart on slide 15 shows X trend [DOC1, Slide 15]"). Do not attempt to recreate charts.
+            *   **Images/Diagrams:** Interpret information conveyed (e.g., Org charts, process flows, infrastructure diagrams). Describe the key takeaways and note the location (e.g., "Org chart on p.3 indicates... [DOC2, p.3]").
+            
+        *   **Document Citation (MANDATORY & DISTINCT):**
+            *   Cite information extracted *directly* from provided documents using the format `[DOCX, reference]`, where 'X' is the document number (if multiple are provided, assume DOC1 if only one) and 'reference' is the specific page number, slide number, section header, or figure/table identifier (e.g., `[DOC1, p.5]`, `[DOC2, Slide 10]`, `[DOC1, Section 3.1]`).
+            *   This `[DOCX]` citation is **distinct** from the `[SSX]` citation used for web grounding URLs. Use the appropriate citation type based on the information's origin.
+            
+        *   **Conflict Resolution:**
+            *   If conflicting information exists between provided documents and web grounding results:
+                *   For **financial breakdowns by business segment or geographic region specifically**, data from a provided document (e.g., an Excel file, a table in a securities report) **MUST** be prioritized over web-grounded summaries [DOCX].
+                *   Prioritize the **latest official provided document** for other internal strategy, plans, and organizational details specific to {company_name}. Cite as `[DOCX]`.
+                *   Prioritize the **latest verifiable public web grounding source** (`[SSX]`) for publicly stated consolidated facts (e.g., official total revenue figures, CEO name).
+                *   If a significant conflict exists that impacts the analysis, briefly note it.
+                
+        *   **Document Date & Version Priority:**
+            *   When multiple documents contain similar information (e.g., financial data for the same period), prioritize:
+                1. The most recent document based on creation/modification date
+                2. Final/approved versions over drafts (if version status is indicated)
+                3. The most detailed or comprehensive source (e.g., full financial report over summary)
+            *   Clearly note the document date when citing financial or time-sensitive information: `[DOCX, reference, dated YYYY-MM-DD]`
+                
+        *   **Multi-lingual Documents:** Be prepared to process documents in Japanese or English. Extract relevant information regardless of source language and present the final analysis in the target output language: **{language}**.
+        
+        *   **Silent Omission:** If specific information requested cannot be verified *either* through web grounding (`[SSX]`) *or* within the provided documents (`[DOCX]`) after exhaustive review, omit it silently per the standard handling instructions.
+    """)
 
 # NEW Instruction Block for Document Handling
 DOCUMENT_ANALYSIS_INSTRUCTION = textwrap.dedent("""\
@@ -381,55 +571,49 @@ FINAL_REVIEW_INSTRUCTION = textwrap.dedent("""\
         *   **Formatting Verification:**
             * All line breaks are properly formatted (no literal '\\n').
             * All section headings use correct Markdown format (`## Number. Title`).
-            * All subsections use proper hierarchical format (`###` or indented bullets).
-            * **Tables are PERFECTLY formatted** (aligned pipes, matching columns, start/end pipes, `-` used sparingly only for missing cell data *confirmed absent in source*, data accuracy check vs source).
-            * Lists use consistent formatting and indentation.
+            * Tables are properly formatted with correct column alignment and separator rows.
+            * No Markdown formatting errors (unintended code blocks, list formatting issues).
 
-        *   **Citation Integrity:**
-            * Every factual claim has an inline citation `[SSX]`.
-            * **Specifically verify financial data points and table entries for correct [SSX] citations.**
-            * Citations are placed immediately after the supported claim, before punctuation.
-            * All citations correspond to entries that WILL BE in the final Sources list.
-            * Every source listed corresponds to at least one inline citation [SSX].
+        *   **Source Citation Integrity:**
+            * Every factual statement has an appropriate inline citation ([SSX] for web sources, [DOCX, reference] for document sources).
+            * All inline citations have corresponding entries in the Sources list (for [SSX] citations) or refer to provided documents (for [DOCX] citations).
+            * No inline citations to non-existent or fabricated sources.
+            * Financial data, dates, names, and figures are precisely matched to their cited sources.
 
-        *   **Document Insight Integration & Prioritization (CRITICAL):**
-            *   Verify that insights from provided documents [DOCX, reference] are deeply integrated, especially for:
-                *   Financial segment/region breakdowns (these MUST come from documents if available).
-                *   Information related to sections for which specific documents were tagged.
-            *   Ensure document-sourced information is prioritized correctly over web-grounding for these specific points.
-            *   Confirm correct `[DOCX, reference]` citation for all document-derived facts.
+        *   **Document Insight Integration:**
+            * ALL relevant information from documents tagged for specific sections has been extracted and properly cited.
+            * Information from documents related to segment/regional financial breakdowns has been prioritized over web sources.
+            * Tables derived from documents maintain their original structure, terminology, and data organization.
+            * Document dates and versions have been properly noted for time-sensitive information.
+            * The most authoritative and recent documents have been prioritized when multiple sources contain similar information.
 
-        *   **Data Precision & Recency:**
-            * All monetary values specify currency and reporting period.
-            * All dates are in consistent format and reflect the latest available data.
-            * Numerical data is presented with appropriate precision and units.
-            * Primary sources used are confirmed to be the most recent available.
+        *   **Entity Focus Validation for {company_name}:**
+            * All information specifically relates to the requested entity.
+            * No confusion with similarly named entities.
+            * Clear distinction between parent company and subsidiary data where relevant.
+            * Verified that all financial data is attributed to the correct legal entity.
 
-        *   **Content Quality:**
-            * Direct start with no conversational text.
-            * Professional tone with no placeholders (except the minimal `-` in tables where structurally needed and confirmed absent in source).
-            * Adherence to silent omission handling instructions.
-            * Logical flow within and between sections.
-            * Analytical depth provided where required (explaining 'why').
-            * Lists (KPIs, Officers, Subsidiaries) verified for completeness based on source availability.
-
-        *   **Single-Entity & Group Structure Clarity (CRITICAL):**
-            *   Ensure that only the specified company name **'{company_name}'** is researched and included. Verify no data from similarly named but unrelated entities has crept in.
-            *   Clarity maintained between parent group data and specific subsidiary data where applicable, clearly sourced [SSX].
-
-        Proceed to generate the final 'Sources' list only after confirming these conditions are met.
+        *   **Analysis Quality:**
+            * Key trends are identified and explained.
+            * The "why" behind important findings is addressed.
+            * Different sections are linked in the General Discussion to provide a coherent overall picture.
+            * Strategic implications are considered, particularly related to opportunities/challenges.
+            * Data is not just presented but analyzed for meaning and significance.
+            
+    *   After completing this review, generate the final Sources list according to the requirements outlined in FINAL_SOURCE_LIST_INSTRUCTIONS.
     """)
 
 COMPLETION_INSTRUCTION_TEMPLATE = textwrap.dedent("""\
-    **Output Completion Requirements:**
-
-    Before concluding your response, verify that:
-    1. Every numbered section requested in the prompt is complete with all required subsections (or content is silently omitted if ungrounded after exhaustive search, retaining headings).
-    2. All content follows **perfect markdown formatting** throughout, especially for tables (check data accuracy and source alignment).
-    3. Each section contains all necessary details based on available grounded information and is not truncated. Check for data recency.
-    4. The response maintains consistent formatting for lists, tables, and code blocks.
-    5. All inline citations `[SSX]` are properly placed, with no extraneous or fabricated URLs. Every fact presented MUST be cited, **especially all financial data**.
-    6. Strictly focus on the exact named company **'{company_name}'** (no confusion with similarly named entities). Verify parent vs. subsidiary context where needed.
+    **Completion Checklist:**
+    *   **Critical Checks:**
+        *   Verify all information provided *for the entity* {company_name} is accurate, current, grounded (with inline citations ([SSX] or [DOCX])), and relevant.
+        *   Confirm the output follows all formatting requirements and uses correct, consistent Markdown.
+        *   Ensure completeness of requested sections, prioritizing exhaustive research for {company_name}.
+        *   Verify all financial and business data in tables matches cited source data exactly.
+        *   **Document Utilization Check:** Verify all relevant information from provided documents, especially documents tagged for specific sections, has been prioritized and extracted using the [DOCX, reference] citation format.
+    *   **Thoroughness:** Employ all the specified research depth practices to ensure comprehensive coverage.
+    *   **Analytical Quality:** Provide analysis that explains the "why" behind trends, links different elements, and explicitly considers strategic implications.
+    *   **Source Clarity:** Include inline citations for every factual statement, using the correct format for web sources [SSX] and document sources [DOCX, reference].
 """)
 
 # --- Prompt Generating Functions ---
@@ -449,6 +633,8 @@ def get_basic_prompt(company_name: str, language: str = "Japanese", ticker: Opti
     formatted_final_source_list = FINAL_SOURCE_LIST_INSTRUCTIONS_TEMPLATE.format(language=language)
     formatted_base_formatting = BASE_FORMATTING_INSTRUCTIONS.format(language=language)
     formatted_audience_reminder = AUDIENCE_CONTEXT_REMINDER.format(language=language)
+    # Add section-specific document handling instructions
+    formatted_section_document_instructions = get_section_specific_document_instructions("basic")
 
     prompt = f"""
 **CRITICAL FOCUS:** This entire request is *exclusively* about the specific entity: {context_str}. Absolutely DO NOT include information about any other similarly named companies (e.g., entertainment, unrelated industries). Verify the identity of the company for all sourced information.
@@ -465,6 +651,7 @@ Research Requirements:
 Conduct in-depth research using {company_name}'s official sources. Perform exhaustive checks across multiple primary sources before omitting any requested information silently. Every factual claim, data point, and summary must include an inline citation in the format [SSX]. Provide specific dates or reporting periods (e.g., "as of 2024-03-31", "for FY2023"). Ensure every claim is grounded by a verifiable Vertex AI grounding URL referenced back in the final Sources list for **{company_name}**. Use the absolute latest available official information.
 {HANDLING_MISSING_INFO_INSTRUCTION}
 {formatted_research_depth}
+{formatted_section_document_instructions}
 {SPECIFICITY_INSTRUCTION}
 {INLINE_CITATION_INSTRUCTION}
 {ANALYSIS_SYNTHESIS_INSTRUCTION}
@@ -555,10 +742,24 @@ def get_financial_prompt(company_name: str, language: str = "Japanese", ticker: 
     formatted_final_source_list = FINAL_SOURCE_LIST_INSTRUCTIONS_TEMPLATE.format(language=language)
     formatted_base_formatting = BASE_FORMATTING_INSTRUCTIONS.format(language=language)
     formatted_audience_reminder = AUDIENCE_CONTEXT_REMINDER.format(language=language)
+    # Add section-specific document handling instructions
+    formatted_section_document_instructions = get_section_specific_document_instructions("financial")
 
     enhanced_financial_research_instructions = textwrap.dedent(f"""\
     *   **Mandatory Deep Search & Calculation:** Conduct an exhaustive search within **{company_name}**'s official financial disclosures for the last 3 full fiscal years, including Annual Reports, Financial Statements (Income Statement, Balance Sheet, Cash Flow Statement), **Footnotes**, Supplementary Data Packs (Databases, Tanshin), official filings, and IR materials. Do not rely solely on summary tables; examine detailed statements and notes for definitions and components [SSX]. Cross-verify figures across multiple sources. Verify table data accuracy meticulously. **Crucially, every single financial figure, ratio, or data point presented, whether in text or tables, MUST be directly supported by a verifiable Vertex AI grounding URL provided *for this query* [SSX] related to {context_str}.**
     *   **CRITICAL for Segment/Regional Data:** If a document (especially Excel or a clear table) providing financial breakdowns by business segment or geographic region for **{company_name}** is available and tagged for this section, **YOU MUST USE THAT DOCUMENT'S DATA** to populate the relevant tables (e.g., Section 4 'Segment-Level Performance'). Cite it appropriately [DOCX, reference]. This overrides web-grounded segment data.
+    *   **Document-Driven Financial Analysis (NEW & CRITICAL):**
+        *   If financial documents (statements, reports, spreadsheets) are provided:
+            1. **Complete Document Review:** Before starting analysis, scan ALL provided financial documents to identify the most comprehensive and recent sources. Don't rely on just one document until you've confirmed it's the most authoritative.
+            2. **Period Identification:** Precisely identify reporting periods in documents, noting fiscal year conventions (e.g., "FY2023 ended March 31, 2024" versus "FY2023 ended December 31, 2023").
+            3. **Data Series Integrity:** When extracting multi-year data (e.g., 3-year trends), ensure data comes from consistent accounting periods and methodologies. Check for any noted accounting changes or restatements in document footnotes.
+            4. **Currency & Unit Verification:** Explicitly verify and note all currency units (JPY, USD, EUR) and multipliers (thousands, millions, billions) as specified in document headers, footers, or notes.
+            5. **Segment Definition Changes:** Check for any notes about changes in business segment definitions or geographic region classifications over the reporting periods. Document these changes in your analysis.
+        *   **Mixed-Source Reconciliation:** When using both document [DOCX] and web-grounded [SSX] financial data:
+            1. Compare totals and subtotals across sources to identify potential discrepancies
+            2. Note any significant differences in segment/region naming conventions 
+            3. Use the most detailed source for granular breakdowns while ensuring totals remain consistent with consolidated figures
+            4. If irreconcilable differences exist, prioritize document data for internal/detailed breakdowns and web-grounded data for official consolidated results
     *   **Calculation Obligation & Citation:** For financial metrics such as Margins, ROE, ROA, Debt-to-Equity, and ROIC: if not explicitly stated, calculate them using standard formulas only if all necessary base data is available and verifiable from grounded sources for {company_name}. Clearly state the formula used [SSX]. **When reporting a calculated metric, cite the sources for all underlying base data points used in the calculation** (e.g., "ROE (Calculated: NI [SS1] / Avg Equity [SS2]) [SS1, SS2]").
     *   **Strict Silent Omission Policy:** If a metric cannot be found or reliably calculated from verifiable sources after exhaustive search, omit that specific line item entirely. Do not use placeholders like 'N/A' or state that data is missing.
     *   **Industry Specific Metrics:** Be aware of industry nuances (e.g., for Insurance, distinguish between flow metrics like 'premium income' and stock metrics like 'annualized premiums in-force' if both are reported and used strategically, e.g., in MTP targets). If including non-standard metrics, briefly explain their definition/relevance based on the source [SSX].
@@ -596,6 +797,7 @@ Research Requirements:
 For each section, provide verifiable data with inline citations [SSX] and specific dates or reporting periods after conducting exhaustive research across multiple primary sources (including **footnotes**) for **{company_name}**. **Every single financial figure MUST have a verifiable grounding URL citation [SSX] from this query.** Every claim must be traceable to a final source. Silently omit any data not found. Use **perfect Markdown tables** for financial data presentation, verifying data accuracy against sources. Use '-' for missing data points only if needed for table structure.
 {HANDLING_MISSING_INFO_INSTRUCTION}
 {formatted_research_depth}
+{formatted_section_document_instructions}
 {SPECIFICITY_INSTRUCTION}
 {INLINE_CITATION_INSTRUCTION}
 {enhanced_financial_research_instructions}
@@ -648,6 +850,14 @@ For each section, provide verifiable data with inline citations [SSX] and specif
     *   **Pre-Analysis Step for Segment Data (Internal Thought Process):**
         *   Before generating the Segment Performance table below, mentally (or as a scratchpad note if it helps you ensure accuracy) list the key data points (Segment Name, Metric, FYXXXX, FYYYYY, FYZZZZ) you have extracted directly from the provided document(s) [DOCX, reference(s)] that are tagged or relevant for this section.
         *   Confirm these documented values will be used in the table. This step is to ensure you prioritize documented financial breakdowns.
+    *   **Document-Based Table Extraction (CRITICAL):**
+        *   If a document contains a segment performance table:
+            1. **Preserve EXACT Structure:** Maintain the precise rows, columns, groupings, and hierarchies from the source table
+            2. **Keep ALL Data Elements:** Include ALL segments, sub-segments, reconciliation items, and totals as presented in the source
+            3. **Maintain Terminology:** Use the EXACT segment names, column headings, and descriptors from the source
+            4. **Extract Full Time Series:** Include all time periods present in the document table (up to 3 fiscal years)
+            5. **Preserve Units & Footnotes:** Include the currency, units of measurement, and any footnote references
+            6. **Note Document Source:** Clearly cite the specific document, page/slide, and table title [DOCX, reference]
     *   If segment data is available for {company_name} (e.g., Mobility, Safety, Entertainment), present revenue, operating profit, and margin percentages for each segment in a **perfectly formatted Markdown table** (include currency and fiscal year, verify data) [SSX or DOCX]. Use '-' for missing data points only if needed for table structure.
         | Segment Name | Metric           | FYXXXX | FYYYYY | FYZZZZ | Source(s) |
         |--------------|------------------|--------|--------|--------|-----------|
@@ -723,6 +933,8 @@ def get_competitive_landscape_prompt(company_name: str, language: str = "Japanes
     formatted_final_source_list = FINAL_SOURCE_LIST_INSTRUCTIONS_TEMPLATE.format(language=language)
     formatted_base_formatting = BASE_FORMATTING_INSTRUCTIONS.format(language=language)
     formatted_audience_reminder = AUDIENCE_CONTEXT_REMINDER.format(language=language)
+    # Add section-specific document handling instructions
+    formatted_section_document_instructions = get_section_specific_document_instructions("competitive_landscape")
 
     competitive_research_instructions = textwrap.dedent(f"""\
     **Research & Grounding Strategy for Competitive Analysis:**
@@ -749,6 +961,7 @@ Research Requirements:
 Use **perfect Markdown tables**. Adhere strictly to grounding rules outlined below. Conduct exhaustive research before silently omitting unverified competitor or industry data. Use '-' for missing data points in tables only if needed for structure. Ensure all claims are verifiable.
 {HANDLING_MISSING_INFO_INSTRUCTION}
 {formatted_research_depth} # Focus on {company_name}'s view + grounded competitor/industry data
+{formatted_section_document_instructions}
 {SPECIFICITY_INSTRUCTION}
 {INLINE_CITATION_INSTRUCTION}
 {competitive_research_instructions}
@@ -840,6 +1053,8 @@ def get_management_strategy_prompt(company_name: str, language: str = "Japanese"
     formatted_final_source_list = FINAL_SOURCE_LIST_INSTRUCTIONS_TEMPLATE.format(language=language)
     formatted_base_formatting = BASE_FORMATTING_INSTRUCTIONS.format(language=language)
     formatted_audience_reminder = AUDIENCE_CONTEXT_REMINDER.format(language=language)
+    # Add section-specific document handling instructions
+    formatted_section_document_instructions = get_section_specific_document_instructions("management_strategy")
 
     prompt = f"""
 **CRITICAL FOCUS:** This entire request is *exclusively* about the specific entity: {context_str}. Verify the identity of the company for all sourced information. Do not include unrelated entities.
@@ -856,6 +1071,7 @@ Research Requirements:
 Conduct in-depth research from official sources for **{company_name}** (IR documents, Annual/Integrated Reports, earnings call transcripts, strategic website sections, MTP presentations). Perform exhaustive checks across multiple sources before silently omitting unverified data. Ensure all claims include inline citations [SSX] and specific dates or reporting periods. Use **perfect Markdown tables** for presenting targets and progress, verifying data accuracy. Use '-' for missing data points only if needed for table structure.
 {HANDLING_MISSING_INFO_INSTRUCTION}
 {formatted_research_depth}
+{formatted_section_document_instructions}
 {SPECIFICITY_INSTRUCTION}
 {INLINE_CITATION_INSTRUCTION}
 {ANALYSIS_SYNTHESIS_INSTRUCTION}
@@ -932,6 +1148,8 @@ def get_regulatory_prompt(company_name: str, language: str = "Japanese", ticker:
     formatted_final_source_list = FINAL_SOURCE_LIST_INSTRUCTIONS_TEMPLATE.format(language=language)
     formatted_base_formatting = BASE_FORMATTING_INSTRUCTIONS.format(language=language)
     formatted_audience_reminder = AUDIENCE_CONTEXT_REMINDER.format(language=language)
+    # Add section-specific document handling instructions
+    formatted_section_document_instructions = get_section_specific_document_instructions("regulatory")
 
     prompt = f'''
 **CRITICAL FOCUS:** This entire request is *exclusively* about the specific entity: {context_str}. Verify the identity of the company for all sourced information. Do not include unrelated entities.
@@ -948,6 +1166,7 @@ Research Requirements:
 Conduct deep research on **{company_name}**'s regulatory environment using official documents (e.g., sustainability reports, governance sections, risk factor disclosures in Annual Reports/Filings) and reputable publications (government sites, regulatory body websites, legal updates if grounded). Perform exhaustive checks across multiple sources before silently omitting unverified data. Each claim must be supported by an inline citation [SSX] with specific dates or reporting periods. Use **perfect Markdown formatting**.
 {HANDLING_MISSING_INFO_INSTRUCTION}
 {formatted_research_depth} # Focus on official statements and grounded regulatory info
+{formatted_section_document_instructions}
 {SPECIFICITY_INSTRUCTION}
 {INLINE_CITATION_INSTRUCTION}
 {ANALYSIS_SYNTHESIS_INSTRUCTION}
@@ -1024,6 +1243,8 @@ def get_crisis_prompt(company_name: str, language: str = "Japanese", ticker: Opt
     formatted_final_source_list = FINAL_SOURCE_LIST_INSTRUCTIONS_TEMPLATE.format(language=language)
     formatted_base_formatting = BASE_FORMATTING_INSTRUCTIONS.format(language=language)
     formatted_audience_reminder = AUDIENCE_CONTEXT_REMINDER.format(language=language)
+    # Add section-specific document handling instructions
+    formatted_section_document_instructions = get_section_specific_document_instructions("crisis")
 
     prompt = f'''
 **CRITICAL FOCUS:** This entire request is *exclusively* about the specific entity: {context_str}. Verify the identity of the company for all sourced information. Do not include unrelated entities.
@@ -1040,6 +1261,7 @@ Research Requirements:
 Conduct thorough research on **{company_name}**'s crisis management and business continuity from official disclosures (e.g., Annual Reports, Security sections, specific incident reports if published) and reputable reports (cybersecurity news, regulatory filings if grounded). Perform exhaustive checks across multiple sources before silently omitting unverified data. Include inline citations [SSX] for every fact, with specific dates or periods. Use **perfect Markdown formatting**.
 {HANDLING_MISSING_INFO_INSTRUCTION}
 {formatted_research_depth} # Focus on official statements + grounded incident reports
+{formatted_section_document_instructions}
 {SPECIFICITY_INSTRUCTION}
 {INLINE_CITATION_INSTRUCTION}
 {ANALYSIS_SYNTHESIS_INSTRUCTION}
@@ -1093,6 +1315,8 @@ def get_digital_transformation_prompt(company_name: str, language: str = "Japane
     formatted_final_source_list = FINAL_SOURCE_LIST_INSTRUCTIONS_TEMPLATE.format(language=language)
     formatted_base_formatting = BASE_FORMATTING_INSTRUCTIONS.format(language=language)
     formatted_audience_reminder = AUDIENCE_CONTEXT_REMINDER.format(language=language)
+    # Add section-specific document handling instructions
+    formatted_section_document_instructions = get_section_specific_document_instructions("digital_transformation")
 
     prompt = f"""
 **CRITICAL FOCUS:** This entire request is *exclusively* about the specific entity: {context_str}. Verify the identity of the company for all sourced information. Do not include unrelated entities.
@@ -1109,6 +1333,7 @@ Research Requirements:
 Conduct detailed research on **{company_name}**'s DX journey using official sources (company reports, dedicated DX sections on website, investor presentations, press releases) and reputable analyses (if grounded). Perform exhaustive checks across multiple sources before silently omitting unverified data. Every claim, financial figure, and example must include an inline citation [SSX] and specific dates or periods. Use **perfect Markdown formatting**. Use '-' for missing data points in tables only if needed for structure. Verify data accuracy.
 {HANDLING_MISSING_INFO_INSTRUCTION}
 {formatted_research_depth} # Focus on DX strategy documents, IR materials
+{formatted_section_document_instructions}
 {SPECIFICITY_INSTRUCTION}
 {INLINE_CITATION_INSTRUCTION}
 {ANALYSIS_SYNTHESIS_INSTRUCTION}
@@ -1177,6 +1402,8 @@ def get_business_structure_prompt(company_name: str, language: str = "Japanese",
     formatted_final_source_list = FINAL_SOURCE_LIST_INSTRUCTIONS_TEMPLATE.format(language=language)
     formatted_base_formatting = BASE_FORMATTING_INSTRUCTIONS.format(language=language)
     formatted_audience_reminder = AUDIENCE_CONTEXT_REMINDER.format(language=language)
+    # Add section-specific document handling instructions
+    formatted_section_document_instructions = get_section_specific_document_instructions("business_structure")
 
     business_structure_completion_guidance = textwrap.dedent(f"""\
     **Critical Data Focus for Business Structure:**
@@ -1186,14 +1413,37 @@ def get_business_structure_prompt(company_name: str, language: str = "Japanese",
         2. The geographic segment breakdown table using the company's reported segmentation and metrics, with at least the most recent fiscal year data (% and absolute value) [SSX].
         3. The top 3-5 major shareholders table with percentages and as-of dates [SSX].
 
+    *   **Document-First Approach for Segmentation (NEW & CRITICAL):**
+        *   When provided documents contain business or geographic segment information:
+            1. **Comprehensive Document Review:** Before creating segment tables, thoroughly analyze ALL provided documents to identify the most comprehensive segment data source.
+            2. **Segment Terminology Alignment:** Use the EXACT segment names and classification scheme from the documents. Don't try to harmonize segment names between document sources and web sources unless explicitly confirmed as the same segment.
+            3. **Multi-Metric Consideration:** Check if documents report multiple metrics for segments (e.g., Revenue, Operating Income, Assets). Extract ALL relevant metrics, not just revenue.
+            4. **Data Series Completeness:** If a document provides a partial series (e.g., 2 years instead of 3), extract what is available without attempting to artificially complete the series from other sources with potentially different methodologies.
+            5. **Structural Hierarchy Preservation:** If documents show a hierarchical segment structure (e.g., main segments with sub-segments), preserve this hierarchy in your analysis. Don't flatten the structure.
+            6. **Reconciliation with Totals:** Always verify that segment breakdowns sum to the reported totals, accounting for any "adjustments" or "eliminations" line items in the documents.
+            7. **Margin & Share Calculations:** If documents only provide absolute values, calculate percentages (showing your work); if only percentages are given, attempt to derive absolute values from reported totals.
+
     *   **Check for Alternative Metrics:** If standard revenue segmentation is not the primary method used by {company_name} (e.g., in MTP targets, core reporting for industries like insurance), look for and report the segmentation based on the key metric the company uses (e.g., premiums in-force, assets under management). Clearly define the metric used based on the source.
     *   **Partial Data Handling:** If only partial data (e.g., 1-2 years instead of 3) is available for segments/geography after exhaustive search for {company_name}, present the available data clearly in the tables, noting the timeframe covered (e.g., in the text analyzing the table: "Data for FY2022-2023 shows..." [SSX]). Do not state unavailability. Proceed with analysis based on the available timeframe.
+
+    *   **Organizational Chart Analysis (NEW & CRITICAL):**
+        *   If provided documents include organizational charts or structural diagrams:
+            1. **Key Entity Identification:** Identify all significant business units, divisions, departments, and subsidiaries shown in the charts.
+            2. **Reporting Relationship Mapping:** Note direct reporting lines and hierarchical relationships between entities.
+            3. **Leadership Identification:** Extract names and titles of key executives/managers associated with each entity in the chart.
+            4. **Functional vs Geographic Organization:** Determine if the chart represents a functional, geographic, matrix, or hybrid organizational structure.
+            5. **Chart Dating & Context:** Note when the chart was created/updated and any contextual information about recent or planned reorganizations.
+        *   Use this organizational information to:
+            1. Inform your analysis of the business segment structure
+            2. Identify key decision-makers and influencers
+            3. Understand how geographic and business segments may interact in the governance structure
 
     *   **Verification:** Before completing each section, internally verify:
         * All priority information points are addressed using available grounded data for {company_name}.
         * At least one full fiscal year of data is provided for segments and geography tables if verifiable, using the correct metric/segmentation.
         * All available verified ownership information is included in the table.
-        * Each data point includes proper inline citation [SSX] and data verified against source.
+        * Organizational structure insights from documents are appropriately integrated in your analysis.
+        * Each data point includes proper inline citation [SSX or DOCX] and data verified against source.
     """)
 
     prompt = f"""
@@ -1211,6 +1461,7 @@ Research Requirements:
 Perform a critical analysis using official sources for **{company_name}** (Annual/Integrated Reports, IR materials, filings like Yukashoken Hokokusho, corporate governance documents). Supplement with reputable secondary sources only when necessary and grounded. Perform exhaustive checks across multiple sources before silently omitting unverified data. Ensure each claim includes an inline citation [SSX] and precise data (e.g., "as of YYYY-MM-DD"). Use **perfect Markdown tables**. Verify data accuracy. Use '-' for missing data points only if needed for table structure. Look for the primary segmentation metric used by the company (e.g., revenue, premiums in-force).
 {HANDLING_MISSING_INFO_INSTRUCTION}
 {formatted_research_depth}
+{formatted_section_document_instructions}
 {SPECIFICITY_INSTRUCTION}
 {INLINE_CITATION_INSTRUCTION}
 {ANALYSIS_SYNTHESIS_INSTRUCTION}
@@ -1235,6 +1486,14 @@ Perform a critical analysis using official sources for **{company_name}** (Annua
     *   **Pre-Analysis Step for Geographic Data (Internal Thought Process):**
         *   Before generating the Geographic Segment table below, mentally (or as a scratchpad note if it helps you ensure accuracy) list the key data points (Geographic Region, Metric, FYXXXX, FYYYYY, FYZZZZ) you have extracted directly from the provided document(s) [DOCX, reference(s)] that are tagged or relevant for this section.
         *   Confirm these documented values will be used in the table. This step is to ensure you prioritize documented geographic breakdowns.
+    *   **Document-Based Table Extraction (CRITICAL):**
+        *   If a document contains a geographic breakdown table:
+            1. **Preserve EXACT Structure:** Maintain the precise rows, columns, groupings, and hierarchies from the source table
+            2. **Keep ALL Data Elements:** Include ALL regions, sub-regions, reconciliation items, and totals as presented in the source
+            3. **Maintain Terminology:** Use the EXACT region names, column headings, and descriptors from the source
+            4. **Extract Full Time Series:** Include all time periods present in the document table (up to 3 fiscal years)
+            5. **Preserve Units & Footnotes:** Include the currency, units of measurement, and any footnote references
+            6. **Note Document Source:** Clearly cite the specific document, page/slide, and table title [DOCX, reference]
     *   List the geographic regions or segments as reported by **{company_name}** (e.g., Japan, North America, Europe, Asia). Identify the primary metric used for geographic segmentation. Include a **perfectly formatted Markdown table** with corresponding figures (specify metric, currency, fiscal year) and composition ratios (%), ensuring totals sum correctly if verifiable [SSX or DOCX]. Verify data accuracy. Use '-' for missing data points only if needed for table structure.
         | Geographic Region | FYXXXX Metric Value (Unit) | FYXXXX (%) | FYYYYY Metric Value (Unit) | FYYYYY (%) | FYZZZZ Metric Value (Unit) | FYZZZZ (%) | Source(s) |
         |-------------------|--------------------------|------------|--------------------------|------------|--------------------------|------------|-----------|
@@ -1317,6 +1576,8 @@ def get_vision_prompt(company_name: str, language: str = "Japanese", ticker: Opt
     formatted_final_source_list = FINAL_SOURCE_LIST_INSTRUCTIONS_TEMPLATE.format(language=language)
     formatted_base_formatting = BASE_FORMATTING_INSTRUCTIONS.format(language=language)
     formatted_audience_reminder = AUDIENCE_CONTEXT_REMINDER.format(language=language)
+    # Add section-specific document handling instructions
+    formatted_section_document_instructions = get_section_specific_document_instructions("vision")
 
     prompt = f"""
 **CRITICAL FOCUS:** This entire request is *exclusively* about the specific entity: {context_str}. Verify the identity of the company for all sourced information. Do not include unrelated entities.
@@ -1333,6 +1594,7 @@ Research Requirements:
 Conduct in-depth research using official sources for **{company_name}** such as the company website (strategy, about us, IR, sustainability pages), Annual/Integrated Reports, MTP documents, and press releases detailing the corporate vision or purpose. Perform exhaustive checks across multiple sources before silently omitting unverified data. Every claim or data point must have an inline citation [SSX] and include specific dates or document references. Use **perfect Markdown formatting**. Verify data accuracy. Use '-' for missing data points in tables only if needed for structure.
 {HANDLING_MISSING_INFO_INSTRUCTION}
 {formatted_research_depth} # Focus on vision/mission statements, strategic pillars
+{formatted_section_document_instructions}
 {SPECIFICITY_INSTRUCTION}
 {INLINE_CITATION_INSTRUCTION}
 {ANALYSIS_SYNTHESIS_INSTRUCTION}
@@ -1383,6 +1645,8 @@ def get_management_message_prompt(company_name: str, language: str = "Japanese",
     formatted_final_source_list = FINAL_SOURCE_LIST_INSTRUCTIONS_TEMPLATE.format(language=language)
     formatted_base_formatting = BASE_FORMATTING_INSTRUCTIONS.format(language=language)
     formatted_audience_reminder = AUDIENCE_CONTEXT_REMINDER.format(language=language)
+    # Add section-specific document handling instructions
+    formatted_section_document_instructions = get_section_specific_document_instructions("management_message")
 
     prompt = f"""
 **CRITICAL FOCUS:** This entire request is *exclusively* about the specific entity: {context_str}. Verify the identity of the company and the speaker for all sourced information. Do not include unrelated entities.
@@ -1399,6 +1663,7 @@ Research Requirements:
 Conduct focused research on recent (last 1-2 years) official communications from **{company_name}**'s leadership (e.g., CEO/Chairman messages in Annual/Integrated Reports, Earnings Call Transcripts Q&A sections, Investor Day presentations, Keynote speeches, official interviews published by reputable sources if grounded). Perform exhaustive checks across multiple sources before silently omitting unverified quotes. Extract strategically relevant verbatim quotes. Each quote must have an inline citation [SSX] and be followed by its specific source reference in parentheses. Use **perfect Markdown formatting**, especially for the quote blocks.
 {HANDLING_MISSING_INFO_INSTRUCTION}
 {formatted_research_depth} # Focus on primary comms: Reports, Transcripts, IR events
+{formatted_section_document_instructions}
 {SPECIFICITY_INSTRUCTION}
 {INLINE_CITATION_INSTRUCTION}
 {ANALYSIS_SYNTHESIS_INSTRUCTION} # Focus synthesis on themes within quotes
@@ -1465,7 +1730,7 @@ def get_account_strategy_prompt(company_name: str, language: str = "Japanese", t
     supplemented by verifiable web grounding, and maps opportunities to {context_company_name}'s capabilities.
     """
     # --- Role Assignment ---
-    persona = f"You are a Senior Account Strategist at {context_company_name} ({context_company_name}). Your task is to develop a comprehensive, data-driven 3-year account strategy plan for targeting {company_name}."
+    persona = f"You are a Senior Account Strategist at {context_company_name}. Your task is to develop a comprehensive, data-driven 3-year account strategy plan for targeting {company_name}."
 
     # --- Context Setup ---
     context_str = f"**{company_name}**"
@@ -1476,12 +1741,45 @@ def get_account_strategy_prompt(company_name: str, language: str = "Japanese", t
     # (Ensure these are correctly defined and accessible)
     formatted_additional_instructions = ADDITIONAL_REFINED_INSTRUCTIONS.format(company_name=company_name, ticker=ticker or "N/A", industry=industry or "N/A")
     # Add language-specific heading instructions for Japanese section titles
-    formatted_language_headings = get_language_specific_headings(language)
+    formatted_language_headings = get_language_specific_headings(language) if 'get_language_specific_headings' in globals() else ""
     # MODIFIED: Enhance research depth specifically for this prompt context
     formatted_research_depth = RESEARCH_DEPTH_INSTRUCTION.format(company_name=company_name) + textwrap.dedent(f"""\
 
         *   **CRITICAL - Account Strategy Context:** When applying these research instructions for the Account Strategy Prompt, remember the goal is to gather intelligence *on* **{company_name}** specifically *to inform strategy FOR* **{context_company_name}**. Prioritize information revealing needs, plans, challenges, and organizational details relevant to potential {context_company_name} solutions.
         *   **Document Prioritization for Internal Context:** CRITICALLY, prioritize and deeply integrate information found within the **provided documents** [DOCX] as the primary source for internal strategy, plans, specific challenges, personnel, and relationship history. Supplement with the latest official primary web sources [SSX] for public facts (revenue, official structure, etc.) and broader market context. Use the correct citation type based on origin. If conflicts arise, prioritize latest official provided document for internal strategy/plans, and latest verifiable public web source for public facts.
+        
+        *   **Document Processing Framework (NEW & CRITICAL):**
+            *   **Document Intelligence Gathering:**
+                1. **Needs & Pain Points Extraction:** In ALL provided documents, specifically identify and extract:
+                   * Explicitly stated business challenges or pain points (e.g., "struggling with legacy systems", "facing compliance challenges")
+                   * Implied needs based on described limitations or issues (e.g., descriptions of manual processes suggesting automation needs)
+                   * Technology gaps mentioned or inferred (e.g., "current system cannot handle X")
+                   * Strategic initiatives requiring technology enablement (e.g., "expansion plans into X market")
+                
+                2. **Decision-Maker Identification:** From documents containing organizational information, extract:
+                   * Key stakeholder names and titles
+                   * Their apparent roles in technology/business decisions
+                   * Reporting relationships and potential influence paths
+                   * Any mentions of decision-making processes or approval chains
+                
+                3. **Cultural Insight Extraction:** Note any information about:
+                   * Stated company values or priorities
+                   * Decision-making style (e.g., consensus-driven, top-down)
+                   * Innovation appetite or technology adoption approach
+                   * Vendor relationship preferences (e.g., preferred partnership models)
+                
+                4. **Technical Environment Mapping:** From technical documents, extract:
+                   * Current systems and platforms 
+                   * Integration points and architectures
+                   * Existing vendor relationships
+                   * Technical standards or constraints
+            
+            *   **Document-Web Synthesis Methodology:**
+                1. **Core-Shell Framework:** Think of document insights as the "core" (internal, detailed, often more current) with web-grounded data as the "shell" (official, public, broader context).
+                2. **Needs-Validation Pattern:** When a need/challenge is identified in documents, look for public validation or context in web sources (e.g., if documents mention security concerns, look for public security initiatives or regulatory factors).
+                3. **Public-Private Triangulation:** Use public statements (web) to validate and contextualize private communications (documents) and vice versa.
+                4. **Progressive Detail Method:** Start with high-level public information (company structure, strategy) then progressively add document-derived detailed insights (specific pain points, technical details).
+                5. **Temporal Context Integration:** Pay close attention to dates in both documents and web sources to create a coherent timeline of the company's challenges, initiatives, and priorities.
     """)
     formatted_final_review_base = FINAL_REVIEW_INSTRUCTION.format(company_name=company_name) # Base for later enhancement
     formatted_completion_base = COMPLETION_INSTRUCTION_TEMPLATE.format(company_name=company_name) # Base for later enhancement
@@ -1503,6 +1801,31 @@ def get_account_strategy_prompt(company_name: str, language: str = "Japanese", t
         "Do not rely solely on web grounding when relevant document information is available.",
         "Prioritize document insights for internal context, but synthesize with web grounding for a complete picture."
     )
+
+    # --- Dynamically create the enhanced completion and review checks ---
+    # Using properly formatted string literals to handle nested quotes correctly
+    enhanced_completion_checks = textwrap.dedent(f'''
+        7. Information from provided documents is integrated and cited correctly using `[DOCX, reference]` format.
+        8. Executive Summary (Section 0) and {context_company_name} Risks (Section 11) are included and complete.
+        9. Synthesis between document insights and web grounding is evident throughout the plan.
+    ''')
+
+    enhanced_review_checks = textwrap.dedent(f'''
+
+        *   **Document Insight Integration & Implications:**
+            *   Insights AND their implications for {context_company_name} from provided documents are incorporated throughout, especially in Sections 2, 4, 5, 6, 7, 9, 12.
+            *   Document citations `[DOCX, reference]` are used correctly and consistently.
+            *   Web grounding `[SSX]` is used appropriately to supplement/verify public facts and provide context.
+            *   **Synthesis:** The analysis clearly integrates insights from BOTH document and web sources where relevant.
+        *   **{context_company_name} Perspective & Value Proposition:**
+            *   The analysis, recommendations, and language consistently reflect the viewpoint, objectives, and value proposition of {context_company_name}.
+            *   Opportunities clearly link {company_name}'s needs (from web/docs) to specific {context_company_name} capabilities AND differentiators.
+        *   **Actionability & Completeness:**
+            *   Executive Summary (Sec 0) provides a clear overview based on the synthesized analysis.
+            *   Engagement Plan (Sec 8) includes actionable next steps for {context_company_name} and considers potential hurdles.
+            *   {context_company_name} Risks (Sec 11) are identified with mitigation strategies relevant to {context_company_name}.
+            *   Final Recommendation (Sec 12) is clear and synthesizes key findings, opportunities, and risks **from {context_company_name}'s perspective**.
+    ''')
 
 
     # --- Assemble the Final Prompt ---
@@ -1573,11 +1896,51 @@ Research & Analysis Requirements:
     *   Reported Relationship with {context_company_name}: Summarize any existing relationship, past projects, or engagement level *if explicitly mentioned and verifiable* in provided documents or grounded sources [DOCX, SSY]. Otherwise, state "No verifiable relationship history found".
 
 ## 2. Key Insights from Provided Documents & Implications for {context_company_name}
-    *   **Document Overview:** List provided documents (e.g., "DOC1: FY24 Internal Strategy PPT", "DOC2: Org Chart PDF").
-    *   **Major Strategic Themes & Priorities (from Docs):** Summarize core goals, transformation efforts, investment areas stated within documents [DOCX, reference]. **Implication for {context_company_name}:** [Analyze what these themes mean for potential {context_company_name} engagement].
-    *   **Recent Activities & Projects (from Docs):** Highlight significant ongoing/planned projects/initiatives mentioned [DOCX, reference]. **Implication for {context_company_name}:** [Identify specific, immediate opportunities or areas for {context_company_name} to align with].
-    *   **Organizational Nuances & Key Stakeholders (from Docs):** Detail relevant structure insights, team names, key individuals [DOCX, reference]. **Implication for {context_company_name}:** [Identify key contacts, decision-makers, and potential relationship mapping targets].
-    *   **Explicitly Stated Needs / Pain Points (from Docs):** List challenges, requirements, gaps directly articulated [DOCX, reference]. **Implication for {context_company_name}:** [Pinpoint where {context_company_name}'s solutions directly address these expressed needs].
+    *   **Document Analysis Framework (NEW & CRITICAL):**
+        *   **Document Inventory & Classification:** First create a detailed inventory of all provided documents:
+            | Doc ID | Document Title/Type | Date/Version | Content Summary | Key Sections/Data | Significance Rating |
+            |--------|---------------------|--------------|-----------------|-------------------|---------------------|
+            | DOC1   | [Title, e.g., "FY24 Internal Strategy PPT"] | [Date] | Summary of main topics | Lists key sections | High/Medium/Low |
+            | DOC2   | [Title, e.g., "Org Chart PDF"] | [Date] | Summary of main topics | Lists key sections | High/Medium/Low |
+            
+        *   **Document Cross-Referencing:** Identify relationships between documents (e.g., "Strategy deck DOC1 refers to IT roadmap detailed in DOC3")
+        *   **Document Temporal Analysis:** Arrange documents chronologically to establish a timeline of events, decisions, and plans
+    
+    *   **Major Strategic Themes & Priorities (from Docs):** 
+        *   Extract and synthesize core strategic goals, transformation efforts, and investment areas stated within documents [DOCX, reference]. 
+        *   Look for both explicit statements (e.g., "Our FY25 priority is X") and implicit priorities (recurring themes, topics with detailed metrics/timelines).
+        *   Note any shifts in priorities across documents of different dates.
+        *   **Implication for {context_company_name}:** [Analyze what these themes mean for potential {context_company_name} engagement, mapping to NESIC capabilities].
+    
+    *   **Recent Activities & Projects (from Docs):** 
+        *   Identify significant ongoing/planned projects/initiatives mentioned [DOCX, reference], including:
+            * Project names and descriptions
+            * Current status and timeline
+            * Budget information (if available)
+            * Key stakeholders involved
+            * Success metrics or expected outcomes
+            * Challenges or roadblocks mentioned
+        *   **Implication for {context_company_name}:** [Identify specific, immediate opportunities or areas for {context_company_name} to align with or enhance these projects].
+    
+    *   **Organizational Nuances & Key Stakeholders (from Docs):** 
+        *   Detail relevant organizational structure insights:
+            * Team names and their functions
+            * Key individuals and their roles
+            * Reporting relationships and governance models
+            * Decision-making processes mentioned
+            * Any recent or planned organizational changes
+        *   [DOCX, reference] 
+        *   **Implication for {context_company_name}:** [Identify key contacts, decision-makers, influence paths, and potential relationship mapping targets].
+    
+    *   **Explicitly Stated Needs / Pain Points (from Docs):** 
+        *   Create a comprehensive catalog of challenges, requirements, and gaps directly articulated in documents:
+            * Technical challenges (e.g., legacy systems, integration issues)
+            * Operational pain points (e.g., manual processes, efficiency gaps)
+            * Strategic challenges (e.g., competitive pressures, market positioning)
+            * Compliance/regulatory requirements
+            * Resource constraints (talent, budget, time)
+        *   [DOCX, reference] 
+        *   **Implication for {context_company_name}:** [Pinpoint where {context_company_name}'s specific solutions directly address these expressed needs, with quantifiable benefits where possible].
 
 ## 3. Financial Health & Investment Capacity ({company_name})
     *   Present Revenue, Net Income (Parent), and Operating Margin (%) for last 3 fiscal years in a **perfectly formatted Markdown table** [SSX]. Calculate Revenue YoY Growth (%). Verify data. Use '-' minimally.
@@ -1660,35 +2023,13 @@ Source and Accuracy Requirements:
 *   **Single-Entity Coverage:** Strictly reference **{company_name}**; omit similarly named entities.
 
 # MODIFIED: Add enhanced completion checks
-{formatted_completion_base + textwrap.dedent('''\
-        7. Information from provided documents is integrated and cited correctly using `[DOCX, reference]` format.
-        8. Executive Summary (Section 0) and {context_company_name} Risks (Section 11) are included and complete.
-        9. Synthesis between document insights and web grounding is evident throughout the plan.
-'''.format(context_company_name=context_company_name))}
+{formatted_completion_base + enhanced_completion_checks}
 
 # MODIFIED: Add enhanced review checks
-{formatted_final_review_base + textwrap.dedent('''\
-
-        *   **Document Insight Integration & Implications:**
-            *   Insights AND their implications for {context_company_name} from provided documents are incorporated throughout, especially in Sections 2, 4, 5, 6, 7, 9, 12.
-            *   Document citations `[DOCX, reference]` are used correctly and consistently.
-            *   Web grounding `[SSX]` is used appropriately to supplement/verify public facts and provide context.
-            *   **Synthesis:** The analysis clearly integrates insights from BOTH document and web sources where relevant.
-        *   **{context_company_name} Perspective & Value Proposition:**
-            *   The analysis, recommendations, and language consistently reflect the viewpoint, objectives, and value proposition of {context_company_name}.
-            *   Opportunities clearly link {company_name}'s needs (from web/docs) to specific {context_company_name} capabilities AND differentiators.
-        *   **Actionability & Completeness:**
-            *   Executive Summary (Sec 0) provides a clear overview based on the synthesized analysis.
-            *   Engagement Plan (Sec 8) includes actionable next steps for {context_company_name} and considers potential hurdles.
-            *   {context_company_name} Risks (Sec 11) are identified with mitigation strategies relevant to {context_company_name}.
-            *   Final Recommendation (Sec 12) is clear and synthesizes key findings, opportunities, and risks **from {context_company_name}'s perspective**.
-'''.format(context_company_name=context_company_name, company_name=company_name))}
+{formatted_final_review_base + enhanced_review_checks}
 
 {formatted_final_source_list} # Reminder this is SSX only
 {formatted_base_formatting}
 """
-
-    # --- Dynamically Enhance Completion & Review Instructions ---
-    # NOTE: The enhancement is now directly embedded above using + operator and f-strings/format method where needed.
 
     return prompt
