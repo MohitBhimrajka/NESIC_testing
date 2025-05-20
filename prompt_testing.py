@@ -40,6 +40,21 @@ NESIC_CAPABILITIES_CONTEXT = textwrap.dedent("""\
     **(Note for AI Strategist:** Use this context to identify how NESIC's specific capabilities, approach, and differentiators can best address the target company's identified needs, challenges, and strategic initiatives from both web grounding and provided documents. Frame opportunities by highlighting NESIC's unique value.)
 """)
 
+# NEW common document instruction block
+DOCUMENT_ANALYSIS_INSTRUCTION_COMMON = textwrap.dedent("""\
+    *   **Document Tagging & Sectional Priority (CRITICAL):**
+        *   You may be provided with documents that are **explicitly tagged as relevant to specific sections** of this report.
+        *   When generating a particular section, if a document is tagged for that section, you **MUST** treat its contents as the **ABSOLUTE PRIMARY SOURCE** for information directly pertaining to that section's topics.
+        *   Synthesize insights from these tagged documents first, then supplement with other provided documents or web grounding as necessary for broader context or untagged information.
+        *   If a tagged document provides specific data (e.g., financial breakdowns, project names, stakeholder lists) requested by the current section, **YOU MUST USE AND CITE THAT DOCUMENTED DATA [DOCX, reference]**. Do not seek this specific data from web grounding if a tagged document provides it.
+
+    *   **Handling Financial Data from Documents (CRITICAL):**
+        *   If a provided document (especially an Excel file, CSV, or clear table within a PDF/PPTX) contains **financial breakdowns by business segment or geographic region for {company_name}**, you **MUST** use this data to populate the respective tables in the financial analysis or business structure sections.
+        *   This document-provided financial breakdown data **OVERRIDES** any conflicting segment/regional financial data found via web grounding. General/consolidated financials can still be cross-verified with web grounding.
+        *   Extract this data meticulously. If an Excel file is provided for financials, its structure (rows/columns for segments/regions) should directly inform your output table.
+        *   Always cite `[DOCX, reference]` for financial data taken directly from provided documents.
+""")
+
 # NEW Instruction Block for Document Handling
 DOCUMENT_ANALYSIS_INSTRUCTION = textwrap.dedent("""\
     *   **CRITICAL: Analysis of Provided Documents (PDFs, PPTXs, etc.):**
@@ -50,6 +65,19 @@ DOCUMENT_ANALYSIS_INSTRUCTION = textwrap.dedent("""\
             *   Relationship history or past engagements between {company_name} and {context_company_name} (if mentioned).
             *   Specific figures, targets, or plans not yet publicly released.
         *   **Mandatory Integration:** Your analysis and the resulting Account Strategy **MUST** deeply integrate insights extracted directly from these provided documents. Do not rely solely on web grounding when relevant document information is available.
+
+        *   **Document Tagging & Sectional Priority (NEW & CRITICAL):**
+            *   You may be provided with documents that are **explicitly tagged as relevant to specific sections** of this report.
+            *   When generating a particular section, if a document is tagged for that section, you **MUST** treat its contents as the **ABSOLUTE PRIMARY SOURCE** for information directly pertaining to that section's topics.
+            *   Synthesize insights from these tagged documents first, then supplement with other provided documents or web grounding as necessary for broader context or untagged information.
+            *   If a tagged document provides specific data (e.g., financial breakdowns, project names, stakeholder lists) requested by the current section, **YOU MUST USE AND CITE THAT DOCUMENTED DATA [DOCX, reference]**. Do not seek this specific data from web grounding if a tagged document provides it.
+
+        *   **Handling Financial Data from Documents (NEW & CRITICAL):**
+            *   If a provided document (especially an Excel file, CSV, or clear table within a PDF/PPTX) contains **financial breakdowns by business segment or geographic region for {company_name}**, you **MUST** use this data to populate the respective tables in the financial analysis or business structure sections.
+            *   This document-provided financial breakdown data **OVERRIDES** any conflicting segment/regional financial data found via web grounding. General/consolidated financials can still be cross-verified with web grounding.
+            *   Extract this data meticulously. If an Excel file is provided for financials, its structure (rows/columns for segments/regions) should directly inform your output table.
+            *   Always cite `[DOCX, reference]` for financial data taken directly from provided documents.
+
         *   **Information Extraction:** Diligently extract information from all parts of the documents:
             *   **Text:** Key strategies, statements, goals, challenges, personnel names/roles.
             *   **Tables:** Financial data, project timelines, KPI targets, organizational lists. Extract relevant data accurately.
@@ -58,10 +86,12 @@ DOCUMENT_ANALYSIS_INSTRUCTION = textwrap.dedent("""\
         *   **Document Citation (MANDATORY & DISTINCT):**
             *   Cite information extracted *directly* from provided documents using the format `[DOCX, reference]`, where 'X' is the document number (if multiple are provided, assume DOC1 if only one) and 'reference' is the specific page number, slide number, section header, or figure/table identifier (e.g., `[DOC1, p.5]`, `[DOC2, Slide 10]`, `[DOC1, Section 3.1]`).
             *   This `[DOCX]` citation is **distinct** from the `[SSX]` citation used for web grounding URLs. Use the appropriate citation type based on the information's origin.
-        *   **Conflict Resolution:** If conflicting information exists between provided documents and web grounding results:
-            *   Prioritize the **latest official provided document** for internal strategy, plans, and organizational details specific to {company_name}. Cite as `[DOCX]`.
-            *   Prioritize the **latest verifiable public web grounding source** (`[SSX]`) for publicly stated facts (e.g., official revenue figures, CEO name).
-            *   If a significant conflict exists that impacts the strategy, briefly note it in the analysis (e.g., "Document [DOC1, p. 8] outlines Plan A, while recent press release [SS3] mentions Plan B adjustment.").
+        *   **Conflict Resolution (MODIFIED):**
+            *   If conflicting information exists between provided documents and web grounding results:
+                *   For **financial breakdowns by business segment or geographic region specifically**, data from a provided document (e.g., an Excel file, a table in a securities report) **MUST** be prioritized over web-grounded summaries [DOCX].
+                *   Prioritize the **latest official provided document** for other internal strategy, plans, and organizational details specific to {company_name}. Cite as `[DOCX]`.
+                *   Prioritize the **latest verifiable public web grounding source** (`[SSX]`) for publicly stated consolidated facts (e.g., official total revenue figures, CEO name).
+                *   If a significant conflict exists that impacts the strategy (beyond segment financials, which are ruled by docs), briefly note it.
         *   **Multi-lingual Documents:** Be prepared to process documents in Japanese or English. Extract relevant information regardless of source language and present the final analysis in the target output language: **{language}**.
         *   **Silent Omission:** If specific information requested cannot be verified *either* through web grounding (`[SSX]`) *or* within the provided documents (`[DOCX]`) after exhaustive review, omit it silently per the standard handling instructions.
     """)
@@ -83,6 +113,7 @@ ADDITIONAL_REFINED_INSTRUCTIONS = textwrap.dedent("""\
             10. Confirm key financial figures and table data points against cited sources. **Verify specifically that all financial data has valid [SSX] citations linked to provided grounding URLs.**
             11. Ensure lists (KPIs, Officers, Subsidiaries) are complete based on source availability.
             12. Confirm analytical depth provided where requested (explaining 'why' and drivers).
+            13. **Document Prioritization Check:** Verify that data explicitly available in provided documents (especially financial breakdowns or information in tagged documents) has been used and cited with `[DOCX, reference]`, taking precedence over web grounding for that specific information.
 
     *   **Exactness of Table Columns:**
         - Each row in any table **MUST** have the exact same number of columns as the header row, delimited by pipes (`|`).
@@ -247,6 +278,35 @@ AUDIENCE_CONTEXT_REMINDER = textwrap.dedent("""\
 def get_language_instruction(language: str) -> str:
     return f"Output Language: The final research output must be presented entirely in **{language}**."
 
+# --- Language-specific heading instructions ---
+def get_language_specific_headings(language: str, nesic_analysis_heading: str = None, three_year_plan_heading: str = None):
+    """
+    Returns instructions for using specific heading text in the target language.
+    
+    Args:
+        language: The target language (e.g., "Japanese", "English")
+        nesic_analysis_heading: Optional heading for NESIC original information analysis
+        three_year_plan_heading: Optional heading for three-year account strategy plan
+    
+    Returns:
+        A formatted instruction string for the specified language
+    """
+    if language == "Japanese":
+        # Default Japanese headings if not provided
+        if not nesic_analysis_heading:
+            nesic_analysis_heading = "NESIC独自情報の分析"
+        if not three_year_plan_heading:
+            three_year_plan_heading = "3ヶ年アカウント戦略プラン"
+            
+        return textwrap.dedent(f"""\
+            *   **Specific Japanese Headings (MANDATORY if applicable):**
+                *   If generating a section discussing "NESIC's original information analysis," the heading **MUST** be: **"{nesic_analysis_heading}"**.
+                *   If generating a section outlining a "three-year account strategy plan," the heading **MUST** be: **"{three_year_plan_heading}"**.
+            """)
+    else:
+        # For English or other languages, use default English headings
+        return ""  # Return empty string for English or other languages
+
 BASE_FORMATTING_INSTRUCTIONS = textwrap.dedent("""\
     Output Format & Quality Requirements:
 
@@ -331,6 +391,13 @@ FINAL_REVIEW_INSTRUCTION = textwrap.dedent("""\
             * Citations are placed immediately after the supported claim, before punctuation.
             * All citations correspond to entries that WILL BE in the final Sources list.
             * Every source listed corresponds to at least one inline citation [SSX].
+
+        *   **Document Insight Integration & Prioritization (CRITICAL):**
+            *   Verify that insights from provided documents [DOCX, reference] are deeply integrated, especially for:
+                *   Financial segment/region breakdowns (these MUST come from documents if available).
+                *   Information related to sections for which specific documents were tagged.
+            *   Ensure document-sourced information is prioritized correctly over web-grounding for these specific points.
+            *   Confirm correct `[DOCX, reference]` citation for all document-derived facts.
 
         *   **Data Precision & Recency:**
             * All monetary values specify currency and reporting period.
@@ -491,6 +558,7 @@ def get_financial_prompt(company_name: str, language: str = "Japanese", ticker: 
 
     enhanced_financial_research_instructions = textwrap.dedent(f"""\
     *   **Mandatory Deep Search & Calculation:** Conduct an exhaustive search within **{company_name}**'s official financial disclosures for the last 3 full fiscal years, including Annual Reports, Financial Statements (Income Statement, Balance Sheet, Cash Flow Statement), **Footnotes**, Supplementary Data Packs (Databases, Tanshin), official filings, and IR materials. Do not rely solely on summary tables; examine detailed statements and notes for definitions and components [SSX]. Cross-verify figures across multiple sources. Verify table data accuracy meticulously. **Crucially, every single financial figure, ratio, or data point presented, whether in text or tables, MUST be directly supported by a verifiable Vertex AI grounding URL provided *for this query* [SSX] related to {context_str}.**
+    *   **CRITICAL for Segment/Regional Data:** If a document (especially Excel or a clear table) providing financial breakdowns by business segment or geographic region for **{company_name}** is available and tagged for this section, **YOU MUST USE THAT DOCUMENT'S DATA** to populate the relevant tables (e.g., Section 4 'Segment-Level Performance'). Cite it appropriately [DOCX, reference]. This overrides web-grounded segment data.
     *   **Calculation Obligation & Citation:** For financial metrics such as Margins, ROE, ROA, Debt-to-Equity, and ROIC: if not explicitly stated, calculate them using standard formulas only if all necessary base data is available and verifiable from grounded sources for {company_name}. Clearly state the formula used [SSX]. **When reporting a calculated metric, cite the sources for all underlying base data points used in the calculation** (e.g., "ROE (Calculated: NI [SS1] / Avg Equity [SS2]) [SS1, SS2]").
     *   **Strict Silent Omission Policy:** If a metric cannot be found or reliably calculated from verifiable sources after exhaustive search, omit that specific line item entirely. Do not use placeholders like 'N/A' or state that data is missing.
     *   **Industry Specific Metrics:** Be aware of industry nuances (e.g., for Insurance, distinguish between flow metrics like 'premium income' and stock metrics like 'annualized premiums in-force' if both are reported and used strategically, e.g., in MTP targets). If including non-standard metrics, briefly explain their definition/relevance based on the source [SSX].
@@ -576,7 +644,11 @@ For each section, provide verifiable data with inline citations [SSX] and specif
     *   Analyze trends in Operating Margin and Net Income Margin for {company_name} in more detail (building on the table above). Explain the *drivers* behind these trends (e.g., cost variations, pricing power, product mix shifts, one-off items mentioned in reports) with specific evidence and inline citations [SSX]. Quantify changes YoY. Discuss the sustainability of current profitability levels [SSY].
 
 ## 4. Segment-Level Performance (if applicable, Last 3 Fiscal Years):
-    *   If segment data is available for {company_name} (e.g., Mobility, Safety, Entertainment), present revenue, operating profit, and margin percentages for each segment in a **perfectly formatted Markdown table** (include currency and fiscal year, verify data) [SSX]. Use '-' for missing data points only if needed for table structure.
+    *   **ATTENTION:** Check for provided documents (e.g., Excel, tables in reports) tagged for this section that detail segment performance. Prioritize these sources [DOCX, reference].
+    *   **Pre-Analysis Step for Segment Data (Internal Thought Process):**
+        *   Before generating the Segment Performance table below, mentally (or as a scratchpad note if it helps you ensure accuracy) list the key data points (Segment Name, Metric, FYXXXX, FYYYYY, FYZZZZ) you have extracted directly from the provided document(s) [DOCX, reference(s)] that are tagged or relevant for this section.
+        *   Confirm these documented values will be used in the table. This step is to ensure you prioritize documented financial breakdowns.
+    *   If segment data is available for {company_name} (e.g., Mobility, Safety, Entertainment), present revenue, operating profit, and margin percentages for each segment in a **perfectly formatted Markdown table** (include currency and fiscal year, verify data) [SSX or DOCX]. Use '-' for missing data points only if needed for table structure.
         | Segment Name | Metric           | FYXXXX | FYYYYY | FYZZZZ | Source(s) |
         |--------------|------------------|--------|--------|--------|-----------|
         | Segment A    | Revenue          |        |        |        | [SSX]     |
@@ -1159,7 +1231,11 @@ Perform a critical analysis using official sources for **{company_name}** (Annua
     *   For each major segment of {company_name}, briefly describe its products/services [SSX] and analyze significant trends (e.g., growth/decline rates YoY calculated from table data, changes in contribution ratio) with specific percentages and dates [SSY]. Identify the fastest growing and/or most profitable segments based on available data (growth in the reported metric, operating income/margin if reported per segment in source documents) [SSZ].
 
 ## 2. Geographic Segment Analysis (Last 3 Fiscal Years):
-    *   List the geographic regions or segments as reported by **{company_name}** (e.g., Japan, North America, Europe, Asia). Identify the primary metric used for geographic segmentation. Include a **perfectly formatted Markdown table** with corresponding figures (specify metric, currency, fiscal year) and composition ratios (%), ensuring totals sum correctly if verifiable [SSX]. Verify data accuracy. Use '-' for missing data points only if needed for table structure.
+    *   **ATTENTION:** Check for provided documents (e.g., Excel, tables in reports) tagged for this section that detail geographic breakdowns. Prioritize these sources [DOCX, reference].
+    *   **Pre-Analysis Step for Geographic Data (Internal Thought Process):**
+        *   Before generating the Geographic Segment table below, mentally (or as a scratchpad note if it helps you ensure accuracy) list the key data points (Geographic Region, Metric, FYXXXX, FYYYYY, FYZZZZ) you have extracted directly from the provided document(s) [DOCX, reference(s)] that are tagged or relevant for this section.
+        *   Confirm these documented values will be used in the table. This step is to ensure you prioritize documented geographic breakdowns.
+    *   List the geographic regions or segments as reported by **{company_name}** (e.g., Japan, North America, Europe, Asia). Identify the primary metric used for geographic segmentation. Include a **perfectly formatted Markdown table** with corresponding figures (specify metric, currency, fiscal year) and composition ratios (%), ensuring totals sum correctly if verifiable [SSX or DOCX]. Verify data accuracy. Use '-' for missing data points only if needed for table structure.
         | Geographic Region | FYXXXX Metric Value (Unit) | FYXXXX (%) | FYYYYY Metric Value (Unit) | FYYYYY (%) | FYZZZZ Metric Value (Unit) | FYZZZZ (%) | Source(s) |
         |-------------------|--------------------------|------------|--------------------------|------------|--------------------------|------------|-----------|
         | Japan             |                          |            |                          |            |                          |            | [SSX]     |
@@ -1276,7 +1352,7 @@ Conduct in-depth research using official sources for **{company_name}** such as 
     *   ***Stakeholder Focus:*** Analyze how the vision statement and its supporting pillars for {company_name} explicitly address or prioritize key stakeholder groups (e.g., customers, employees, shareholders, society, environment) based on the language used in official communications [SSX]. Provide specific examples or quotes [SSY].
 
 ## 2. General Discussion:
-    *   Provide a concluding single paragraph (300-500 words) synthesizing the information in Section 1 regarding **{company_name}**. Evaluate the clarity, ambition, distinctiveness, and internal coherence of the stated vision and its components. Use inline citations to link back to specific elements (e.g., "The vision's focus on sustainability [SSX] is clearly measured by the CO2 reduction KPI [SSY], demonstrating commitment... However, the link between the 'Innovation' pillar and specific KPIs appears less defined [SSZ] based on available public disclosures..."). Incorporate key quantitative points if available.
+    *   Provide a concluding single paragraph (300-500 words) that synthesizes the information in Section 1 regarding **{company_name}**. Evaluate the clarity, ambition, distinctiveness, and internal coherence of the stated vision and its components. Use inline citations to link back to specific elements (e.g., "The vision's focus on sustainability [SSX] is clearly measured by the CO2 reduction KPI [SSY], demonstrating commitment... However, the link between the 'Innovation' pillar and specific KPIs appears less defined [SSZ] based on available public disclosures..."). Incorporate key quantitative points if available.
     *   Structure the analysis logically—start with an overall summary of the vision's core message, discuss the strength and measurability of its components and stakeholder considerations, and finally evaluate its potential effectiveness in guiding strategy and its relevance for a Japanese audience assessing long-term direction.
     *   Do not introduce new claims beyond the synthesized findings from Section 1 and citations about **{company_name}**.
 
@@ -1399,6 +1475,8 @@ def get_account_strategy_prompt(company_name: str, language: str = "Japanese", t
     # --- Format Standard Instruction Blocks ---
     # (Ensure these are correctly defined and accessible)
     formatted_additional_instructions = ADDITIONAL_REFINED_INSTRUCTIONS.format(company_name=company_name, ticker=ticker or "N/A", industry=industry or "N/A")
+    # Add language-specific heading instructions for Japanese section titles
+    formatted_language_headings = get_language_specific_headings(language)
     # MODIFIED: Enhance research depth specifically for this prompt context
     formatted_research_depth = RESEARCH_DEPTH_INSTRUCTION.format(company_name=company_name) + textwrap.dedent(f"""\
 
@@ -1471,6 +1549,7 @@ Research & Analysis Requirements:
 {SPECIFICITY_INSTRUCTION}
 {INLINE_CITATION_INSTRUCTION} # Reminds of the two citation types
 {ANALYSIS_SYNTHESIS_INSTRUCTION} # Synthesize from BOTH sources
+{formatted_language_headings} # Adds Japanese section titles when language is Japanese
 
 {formatted_additional_instructions} # Includes single-entity focus, markdown rules etc.
 
