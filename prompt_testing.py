@@ -6,6 +6,13 @@ from typing import Optional
 # --- Standard Instruction Blocks ---
 # (Updated with placeholders for formatting)
 
+# New instruction to skip thinking process
+NO_THINKING_INSTRUCTION = textwrap.dedent("""\
+    **Direct Response Requirement:**
+    
+    Provide your response in a structured, final format without showing your thinking or planning process. Do not include any preliminary analysis, reasoning, or step-by-step thinking in your output. Present only the final, polished answer directly using the requested format and sections. Your output should start with my first requested section heading as this is a proffesional report.
+""")
+
 # --- New Section-Specific Document Handling Function ---
 def get_section_specific_document_instructions(section_name: str) -> str:
     """
@@ -20,114 +27,121 @@ def get_section_specific_document_instructions(section_name: str) -> str:
     """
     # Common document handling instructions
     common_instructions = textwrap.dedent("""\
-        *   **Section-Specific Document Handling (CRITICAL):**
-            *   Certain documents may be **specifically tagged for this section**. If provided, these documents MUST be treated as the PRIMARY and MOST AUTHORITATIVE source for information in this section.
-            *   Thoroughly analyze ALL provided documents before using web grounding. Extract EVERY relevant data point, insight, and context from these documents first.
-            *   If no documents are provided for this section, rely on web grounding entirely, following standard research procedures.
-            *   When documents ARE provided, use web grounding to:
-                1. Fill gaps not covered in the documents
-                2. Provide broader market/industry context
-                3. Verify public facts (like financial totals) that should align with official disclosures
-                4. Cross-reference the most recent public information if documents may be outdated
-            *   Use the proper citation format: `[DOCX, reference]` for document-sourced information and `[SSX]` for web-grounded information.
+        **Dual-Source Information Processing for this Section (CRITICAL):**
+            **Document Analysis (Primary Internal Context):**
+            Thoroughly analyze ALL provided documents. Extract EVERY relevant data point, insight, and internal context.
+            Certain documents may be **specifically tagged for this section**. If so, these documents MUST be treated as the PRIMARY and MOST AUTHORITATIVE source for *internal details, specific plans, and non-public information* relevant to this section.
+            For information directly sourced from documents, use the citation format: `[DOCX, reference]`.
+            **Mandatory Web Grounding (Verification & Public Context):**
+            Regardless of document availability, **ALWAYS perform thorough web grounding** using official company sources and reputable third-party sources (if grounded by Vertex AI).
+            When documents ARE provided for this section, web grounding is CRITICAL to:
+                1.  **Verify and Update Public Facts:** Confirm publicly disclosable facts mentioned in documents (e.g., financial totals, CEO names, major public initiatives) against the LATEST official public sources. If discrepancies arise, prioritize the most recent verifiable public source for such facts.
+                2.  **Fill Gaps:** Identify and incorporate information relevant to this section that is not covered in the provided documents.
+                3.  **Provide Broader Context:** Supplement document insights with current market trends, industry benchmarks, and competitive landscape information.
+                4.  **Check for Recency:** If provided documents might be outdated, use web grounding to find the most recent public announcements or data related to the topics in this section.
+                For information sourced from web grounding, use the citation format: `[SSX]`.
+            **Synthesis and Prioritization:**
+            **Internal vs. Public:** Prioritize documents for internal strategy, specific non-public plans, and detailed operational context. Prioritize latest web sources for official public statements and consolidated public data.
+            If no documents are provided for this section, rely primarily on web grounding, following standard research procedures.
+            Your final output for this section MUST reflect a synthesis of insights from both provided documents and web grounding where applicable, citing the actual source used for each piece of information.
     """)
     
-    # Section-specific enhancements
+    # Section-specific enhancements (NO CHANGES TO THE LOGIC BELOW THIS LINE IN THIS FUNCTION)
     if section_name == "financial":
         specific_instructions = textwrap.dedent("""\
-            *   **Financial Document Processing (SPECIALIZED):**
-                *   For financial tables in documents:
-                    1. **Preserve Original Structure:** Maintain the exact segment/region names, time periods, and hierarchical structure
-                    2. **Extract Complete Data Series:** Include ALL columns and rows, not just selected highlights
-                    3. **Maintain Units & Calculations:** Preserve the original currency/units and verify subtotals/totals
-                    4. **Capture Footnotes:** Extract and incorporate any footnotes explaining financial data
-                *   When financial documents contain segment/regional breakdowns:
-                    1. These ALWAYS take precedence over web-grounded segmentation data
-                    2. Use the EXACT naming and classification system from the documents
-                    3. Present the complete table structure including any "Adjustments," "Eliminations," or "Other" categories
-                *   For documents with partial financial time series (e.g., only 1-2 years):
-                    1. Present what is available rather than attempting to complete the series from other sources
-                    2. Clearly note the time period covered (e.g., "FY2022-2023 as reported in document [DOCX]")
+            **Financial Document Processing (SPECIALIZED):**
+            For financial tables in documents:
+                1. **Preserve Original Structure:** Maintain the exact segment/region names, time periods, and hierarchical structure
+                2. **Extract Complete Data Series:** Include ALL columns and rows, not just selected highlights
+                3. **Maintain Units & Calculations:** Preserve the original currency/units and verify subtotals/totals
+                4. **Capture Footnotes:** Extract and incorporate any footnotes explaining financial data
+            When financial documents contain segment/regional breakdowns:
+                1. These ALWAYS take precedence over web-grounded segmentation data
+                2. Use the EXACT naming and classification system from the documents
+                3. Present the complete table structure including any "Adjustments," "Eliminations," or "Other" categories
+            For documents with partial financial time series (e.g., only 1-2 years):
+                1. Present what is available rather than attempting to complete the series from other sources
+                2. Clearly note the time period covered (e.g., "FY2024-2025 as reported in document [DOCX]")
         """)
     elif section_name == "business_structure":
         specific_instructions = textwrap.dedent("""\
-            *   **Business Structure Document Processing (SPECIALIZED):**
-                *   For organizational charts and structure documents:
-                    1. **Entity Mapping:** Identify ALL business units, divisions, departments, and subsidiaries
-                    2. **Hierarchy Preservation:** Maintain the exact reporting relationships and organizational levels
-                    3. **Leadership Extraction:** Capture all names, titles, and responsibilities mentioned
-                    4. **Structural Context:** Note if the chart represents functional, geographic, matrix, or hybrid organization
-                *   For segment/region classification documents:
-                    1. Use the EXACT segment/region names and definitions from the documents
-                    2. Maintain any hierarchical segment structure (e.g., main segments with sub-segments)
-                    3. Extract both absolute values AND percentages where available
-                    4. Calculate missing values where possible (e.g., if only % or only absolute values are provided)
+            **Business Structure Document Processing (SPECIALIZED):**
+            For organizational charts and structure documents:
+                1. **Entity Mapping:** Identify ALL business units, divisions, departments, and subsidiaries
+                2. **Hierarchy Preservation:** Maintain the exact reporting relationships and organizational levels
+                3. **Leadership Extraction:** Capture all names, titles, and responsibilities mentioned
+                4. **Structural Context:** Note if the chart represents functional, geographic, matrix, or hybrid organization
+            For segment/region classification documents:
+                1. Use the EXACT segment/region names and definitions from the documents
+                2. Maintain any hierarchical segment structure (e.g., main segments with sub-segments)
+                3. Extract both absolute values AND percentages where available
+                4. Calculate missing values where possible (e.g., if only % or only absolute values are provided)
         """)
     elif section_name == "vision" or section_name == "management_message":
         specific_instructions = textwrap.dedent("""\
-            *   **Strategic Vision Document Processing (SPECIALIZED):**
-                *   For vision/strategy documents:
-                    1. **Exact Quote Prioritization:** Extract verbatim statements of vision, mission, purpose, and values
-                    2. **Strategic Pillar Identification:** Identify all stated strategic pillars/themes with their explanations
-                    3. **Horizon & Timeframe Capture:** Note the explicit timeframes mentioned (e.g., "Vision 2030")
-                    4. **KPI Linkage:** Connect stated KPIs/metrics specifically mentioned as measuring vision progress
-                *   For executive statements/interviews in documents:
-                    1. Extract COMPLETE quotes with proper attribution (name, title, context) and citation
-                    2. Preserve the exact wording, avoiding paraphrasing
-                    3. Group quotes by themes to identify recurring strategic messages
-                    4. Note the date/context of statements to establish a timeline of strategic communication
+            **Strategic Vision Document Processing (SPECIALIZED):**
+            For vision/strategy documents:
+                1. **Exact Quote Prioritization:** Extract verbatim statements of vision, mission, purpose, and values
+                2. **Strategic Pillar Identification:** Identify all stated strategic pillars/themes with their explanations
+                3. **Horizon & Timeframe Capture:** Note the explicit timeframes mentioned (e.g., "Vision 2030")
+                4. **KPI Linkage:** Connect stated KPIs/metrics specifically mentioned as measuring vision progress
+            For executive statements/interviews in documents:
+                1. Extract COMPLETE quotes with proper attribution (name, title, context) and citation
+                2. Preserve the exact wording, avoiding paraphrasing
+                3. Group quotes by themes to identify recurring strategic messages
+                4. Note the date/context of statements to establish a timeline of strategic communication
         """)
     elif section_name == "regulatory" or section_name == "crisis":
         specific_instructions = textwrap.dedent("""\
-            *   **Regulatory/Risk Document Processing (SPECIALIZED):**
-                *   For regulatory/compliance documents:
-                    1. **Requirement Mapping:** Extract all mentioned regulatory requirements with their status
-                    2. **Agency Identification:** Note all regulatory bodies, agencies, and industry associations mentioned
-                    3. **Timeframe Extraction:** Identify implementation deadlines, compliance dates, and reporting periods
-                    4. **Gap Analysis:** Note any explicitly mentioned compliance gaps or challenges
-                *   For risk/crisis management documents:
-                    1. **Incident Chronology:** Create a timeline of any mentioned incidents with exact dates
-                    2. **Response Capture:** Detail the specific responses, remediation efforts, and outcomes
-                    3. **Preparedness Assessment:** Extract information about contingency plans, drills, and governance
-                    4. **Stakeholder Communication:** Note how incidents were communicated internally and externally
+            **Regulatory/Risk Document Processing (SPECIALIZED):**
+            For regulatory/compliance documents:
+                1. **Requirement Mapping:** Extract all mentioned regulatory requirements with their status
+                2. **Agency Identification:** Note all regulatory bodies, agencies, and industry associations mentioned
+                3. **Timeframe Extraction:** Identify implementation deadlines, compliance dates, and reporting periods
+                4. **Gap Analysis:** Note any explicitly mentioned compliance gaps or challenges
+            For risk/crisis management documents:
+                1. **Incident Chronology:** Create a timeline of any mentioned incidents with exact dates
+                2. **Response Capture:** Detail the specific responses, remediation efforts, and outcomes
+                3. **Preparedness Assessment:** Extract information about contingency plans, drills, and governance
+                4. **Stakeholder Communication:** Note how incidents were communicated internally and externally
         """)
     elif section_name == "digital_transformation":
         specific_instructions = textwrap.dedent("""\
-            *   **Digital Transformation Document Processing (SPECIALIZED):**
-                *   For DX strategy documents:
-                    1. **Initiative Mapping:** Identify all DX initiatives with their objectives, timelines, and owners
-                    2. **Investment Extraction:** Extract all mentioned investment figures with currency, timeframe, and allocation
-                    3. **Technology Stack Analysis:** Note current and planned technology platforms, vendors, and architectures
-                    4. **Capability Assessment:** Extract any self-assessment of digital maturity or capability gaps
-                *   For DX implementation/case study documents:
-                    1. **Implementation Detail:** Extract specific technologies, methodologies, and implementation approaches
-                    2. **Outcome Measurement:** Note all stated outcomes, ROI figures, and success metrics
-                    3. **Challenge Identification:** Capture explicitly mentioned challenges, roadblocks, and lessons learned
-                    4. **Integration Context:** Understand how specific DX initiatives fit into the broader strategy
+            **Digital Transformation Document Processing (SPECIALIZED):**
+            For DX strategy documents:
+                1. **Initiative Mapping:** Identify all DX initiatives with their objectives, timelines, and owners
+                2. **Investment Extraction:** Extract all mentioned investment figures with currency, timeframe, and allocation
+                3. **Technology Stack Analysis:** Note current and planned technology platforms, vendors, and architectures
+                4. **Capability Assessment:** Extract any self-assessment of digital maturity or capability gaps
+            For DX implementation/case study documents:
+                1. **Implementation Detail:** Extract specific technologies, methodologies, and implementation approaches
+                2. **Outcome Measurement:** Note all stated outcomes, ROI figures, and success metrics
+                3. **Challenge Identification:** Capture explicitly mentioned challenges, roadblocks, and lessons learned
+                4. **Integration Context:** Understand how specific DX initiatives fit into the broader strategy
         """)
     elif section_name == "management_strategy":
         specific_instructions = textwrap.dedent("""\
-            *   **Management Strategy Document Processing (SPECIALIZED):**
-                *   For mid-term plan (MTP) documents:
-                    1. **Goal Hierarchy:** Identify overarching goals, strategic pillars, and specific objectives
-                    2. **Target Extraction:** Extract ALL stated targets/KPIs with their exact metrics, values, and deadlines
-                    3. **Progress Tracking:** Note any mentioned progress against previous targets
-                    4. **Execution Roadmap:** Capture implementation plans, resource allocation, and governance
-                *   For strategic review/update documents:
-                    1. **Strategy Evolution:** Note any shifts or adjustments in strategic direction
-                    2. **External Factors:** Identify mentioned market conditions, competitive factors, or disruptions
-                    3. **Internal Capability:** Extract assessments of organizational readiness or capability gaps
-                    4. **Strategic Risk:** Capture mentioned risks to strategy execution and mitigation approaches
+            **Management Strategy Document Processing (SPECIALIZED):**
+            For mid-term plan (MTP) documents:
+                1. **Goal Hierarchy:** Identify overarching goals, strategic pillars, and specific objectives
+                2. **Target Extraction:** Extract ALL stated targets/KPIs with their exact metrics, values, and deadlines
+                3. **Progress Tracking:** Note any mentioned progress against previous targets
+                4. **Execution Roadmap:** Capture implementation plans, resource allocation, and governance
+            For strategic review/update documents:
+                1. **Strategy Evolution:** Note any shifts or adjustments in strategic direction
+                2. **External Factors:** Identify mentioned market conditions, competitive factors, or disruptions
+                3. **Internal Capability:** Extract assessments of organizational readiness or capability gaps
+                4. **Strategic Risk:** Capture mentioned risks to strategy execution and mitigation approaches
         """)
     elif section_name == "competitive_landscape":
         specific_instructions = textwrap.dedent("""\
-            *   **Competitive Analysis Document Processing (SPECIALIZED):**
-                *   For competitive landscape documents:
+            **Competitive Analysis Document Processing (SPECIALIZED):**
+                For competitive landscape documents:
                     1. **Named Competitor Extraction:** Identify ALL specifically named competitors with their characterizations
                     2. **Market Share Data:** Extract any market share figures, rankings, or positioning statements
                     3. **Competitive Dynamic:** Note described patterns of competition, partnership, or industry collaboration
                     4. **Differentiation Factors:** Capture stated points of differentiation vs. competitors
-                *   For SWOT or strategic position documents:
+                For SWOT or strategic position documents:
                     1. **Strength/Weakness Mapping:** Extract all mentioned internal strengths and weaknesses
                     2. **Opportunity/Threat Identification:** Capture external opportunities and threats in the competitive context
                     3. **Strategic Response:** Note planned responses to competitive threats or market opportunities
@@ -135,17 +149,17 @@ def get_section_specific_document_instructions(section_name: str) -> str:
         """)
     else:  # Default for basic profile and other sections
         specific_instructions = textwrap.dedent("""\
-            *   **General Document Processing (SPECIALIZED):**
-                *   For corporate profile documents:
-                    1. **Entity Verification:** Confirm the exact legal name, registration details, and corporate structure
-                    2. **Historical Timeline:** Extract foundation dates, major milestones, and organizational evolution
-                    3. **Leadership Identification:** Capture complete leadership rosters with titles and responsibilities
-                    4. **Business Description:** Extract detailed business descriptions, operational scope, and market positioning
-                *   For supplementary documents:
-                    1. **Comprehensive Review:** Analyze ALL sections of documents for relevant information
-                    2. **Cross-Reference:** Connect information across multiple documents to form a complete picture
-                    3. **Recency Priority:** Prioritize the most recent documents when information conflicts
-                    4. **Contextual Integration:** Place extracted information in proper business and industry context
+            **General Document Processing (SPECIALIZED):**
+               For corporate profile documents:
+                1. **Entity Verification:** Confirm the exact legal name, registration details, and corporate structure
+                2. **Historical Timeline:** Extract foundation dates, major milestones, and organizational evolution
+                3. **Leadership Identification:** Capture complete leadership rosters with titles and responsibilities
+                4. **Business Description:** Extract detailed business descriptions, operational scope, and market positioning
+            For supplementary documents:
+                1. **Comprehensive Review:** Analyze ALL sections of documents for relevant information
+                2. **Cross-Reference:** Connect information across multiple documents to form a complete picture
+                3. **Recency Priority:** Prioritize the most recent documents when information conflicts
+                4. **Contextual Integration:** Place extracted information in proper business and industry context
         """)
     
     # Combine common and specific instructions
@@ -155,184 +169,233 @@ def get_section_specific_document_instructions(section_name: str) -> str:
 NESIC_CAPABILITIES_CONTEXT = textwrap.dedent("""\
     **NESIC Capabilities & Strategic Context (Reference for Analysis):**
 
-    *   **Core Business Domains (What We Do):**
-        *   **Digital Transformation (DX) Enablement:** Partnering with clients from strategic DX consulting and roadmap design through to complex implementation and ongoing optimization, focusing on solving core business challenges and driving innovation.
-        *   **Advanced System Integration (SI):** Expertise in architecting, building, testing, and integrating sophisticated, mission-critical IT systems, ensuring seamless operation within complex multi-vendor environments. Focus on reliability and future-readiness.
-        *   **Next-Generation Network Solutions:** Designing, deploying, securing, and managing robust network infrastructures (LAN, WAN, Wireless, 5G/Local 5G, SD-WAN). Delivering high-performance, secure connectivity for both enterprise and carrier-grade requirements.
-        *   **Comprehensive Cybersecurity Services:** Providing end-to-end security solutions: strategic consulting, risk/vulnerability assessments, advanced Security Operations Center (SOC) services, Managed Security Service Provider (MSSP) offerings, threat detection/response, and compliance support.
-        *   **Strategic Cloud Services:** Enabling multi-cloud adoption (AWS, Azure, GCP, OCI+) through expert migration planning and execution, secure cloud infrastructure management, performance/cost optimization, and hybrid/private cloud integration.
-        *   **Intelligent Managed Services & BPO:** Delivering high-quality IT infrastructure operation, 24/7 proactive monitoring & management, service desk support, and IT-related Business Process Outsourcing to enhance client operational efficiency, reduce TCO, and ensure service continuity.
-        *   **Modern Collaboration & Communication Platforms:** Implementing and managing unified communications (UC), advanced video conferencing systems, AI-enhanced contact center solutions, and digital workplace tools to boost productivity and user experience.
-        *   **Applied IoT & Data Analytics:** Designing and implementing IoT solutions for data collection/integration, providing data visualization and analytics services, often leveraging advanced AI/ML capabilities from the NEC Group to unlock business insights.
-        *   **Converged Physical Security & Facility Management:** Integrating IT infrastructure with physical security systems (biometrics, surveillance, access control) and smart building/facility management solutions for enhanced safety and efficiency.
+    **Core Business Domains (What We Do):**
+    **Digital Transformation (DX) Enablement:** Partnering with clients from strategic DX consulting and roadmap design through to complex implementation and ongoing optimization, focusing on solving core business challenges and driving innovation.
+    **Advanced System Integration (SI):** Expertise in architecting, building, testing, and integrating sophisticated, mission-critical IT systems, ensuring seamless operation within complex multi-vendor environments. Focus on reliability and future-readiness.
+    **Next-Generation Network Solutions:** Designing, deploying, securing, and managing robust network infrastructures (LAN, WAN, Wireless, 5G/Local 5G, SD-WAN). Delivering high-performance, secure connectivity for both enterprise and carrier-grade requirements.
+    **Comprehensive Cybersecurity Services:** Providing end-to-end security solutions: strategic consulting, risk/vulnerability assessments, advanced Security Operations Center (SOC) services, Managed Security Service Provider (MSSP) offerings, threat detection/response, and compliance support.
+    **Strategic Cloud Services:** Enabling multi-cloud adoption (AWS, Azure, GCP, OCI+) through expert migration planning and execution, secure cloud infrastructure management, performance/cost optimization, and hybrid/private cloud integration.
+    **Intelligent Managed Services & BPO:** Delivering high-quality IT infrastructure operation, 24/7 proactive monitoring & management, service desk support, and IT-related Business Process Outsourcing to enhance client operational efficiency, reduce TCO, and ensure service continuity.
+    **Modern Collaboration & Communication Platforms:** Implementing and managing unified communications (UC), advanced video conferencing systems, AI-enhanced contact center solutions, and digital workplace tools to boost productivity and user experience.
+    **Applied IoT & Data Analytics:** Designing and implementing IoT solutions for data collection/integration, providing data visualization and analytics services, often leveraging advanced AI/ML capabilities from the NEC Group to unlock business insights.
+    **Converged Physical Security & Facility Management:** Integrating IT infrastructure with physical security systems (biometrics, surveillance, access control) and smart building/facility management solutions for enhanced safety and efficiency.
 
-    *   **NESIC's Core Value Proposition & Strategic Approach (How We Succeed):**
-        *   **Co-Creation Partnership:** We prioritize understanding client challenges deeply and collaborating closely to design and deliver the *optimal* solution, acting as a long-term strategic partner.
-        *   **Leveraging NEC Group Strengths:** We uniquely integrate cutting-edge technologies (AI, biometrics, 5G/6G R&D, advanced analytics) and the broad solution portfolio of the NEC Corporation to deliver innovative and differentiated outcomes.
-        *   **Ensuring Mission-Critical Reliability:** Decades of proven experience delivering and managing large-scale, complex systems for demanding clients, ensuring operational stability and resilience.
-        *   **End-to-End Service Lifecycle:** Providing comprehensive support across the entire lifecycle, from initial consultation and design to implementation, management, and continuous improvement.
-        *   **Vendor-Agnostic Integration Expertise:** Skillfully integrating best-of-breed solutions from a wide range of technology partners while ensuring interoperability and avoiding vendor lock-in where appropriate.
+    **NESIC's Core Value Proposition & Strategic Approach (How We Succeed):**
+    **Co-Creation Partnership:** We prioritize understanding client challenges deeply and collaborating closely to design and deliver the *optimal* solution, acting as a long-term strategic partner.
+    **Leveraging NEC Group Strengths:** We uniquely integrate cutting-edge technologies (AI, biometrics, 5G/6G R&D, advanced analytics) and the broad solution portfolio of the NEC Corporation to deliver innovative and differentiated outcomes.
+    **Ensuring Mission-Critical Reliability:** Decades of proven experience delivering and managing large-scale, complex systems for demanding clients, ensuring operational stability and resilience.
+    **End-to-End Service Lifecycle:** Providing comprehensive support across the entire lifecycle, from initial consultation and design to implementation, management, and continuous improvement.
+    **Vendor-Agnostic Integration Expertise:** Skillfully integrating best-of-breed solutions from a wide range of technology partners while ensuring interoperability and avoiding vendor lock-in where appropriate.
 
-    *   **Key Differentiators (Why Choose NESIC):**
-        *   **NEC Group Technology Access:** Unique ability to incorporate world-class NEC R&D and specialized technologies.
-        *   **Proven SI Track Record:** Unmatched experience in delivering complex, large-scale projects within the Japanese market.
-        *   **Deep Networking & Security DNA:** Core technical leadership and heritage in designing and securing critical networks.
-        *   **Nationwide Delivery & Support:** Robust, skilled service infrastructure across Japan for reliable installation, maintenance, and operational support.
-        *   **Client-Centric Flexibility:** Combining structured methodologies with the agility to tailor solutions and engagement models to specific client needs.
+    **Key Differentiators (Why Choose NESIC):**
+    **NEC Group Technology Access:** Unique ability to incorporate world-class NEC R&D and specialized technologies.
+    **Proven SI Track Record:** Unmatched experience in delivering complex, large-scale projects within the Japanese market.
+    **Deep Networking & Security DNA:** Core technical leadership and heritage in designing and securing critical networks.
+    **Nationwide Delivery & Support:** Robust, skilled service infrastructure across Japan for reliable installation, maintenance, and operational support.
+    **Client-Centric Flexibility:** Combining structured methodologies with the agility to tailor solutions and engagement models to specific client needs.
 
-    *   **Primary Target Segments:** Large Enterprises, Government Agencies & Public Sector Organizations, Telecommunications Carriers, Critical Social Infrastructure Providers.
+    **Primary Target Segments:** Large Enterprises, Government Agencies & Public Sector Organizations, Telecommunications Carriers, Critical Social Infrastructure Providers.
 
     **(Note for AI Strategist:** Use this context to identify how NESIC's specific capabilities, approach, and differentiators can best address the target company's identified needs, challenges, and strategic initiatives from both web grounding and provided documents. Frame opportunities by highlighting NESIC's unique value.)
 """)
 
 # NEW common document instruction block
 DOCUMENT_ANALYSIS_INSTRUCTION_COMMON = textwrap.dedent("""\
-    *   **CRITICAL: Analysis of Provided Documents (PDFs, PPTXs, etc.):**
-        *   **Priority Source:** You **WILL BE PROVIDED** with relevant documents (e.g., internal presentations, past proposals, meeting notes, org charts). Treat these documents as a **PRIMARY and often MORE CURRENT/DETAILED source of context** than general web search results, especially regarding:
-            *   Specific ongoing projects, initiatives, and timelines.
-            *   Internal challenges, pain points, and stated needs.
-            *   Detailed organizational structure, key personnel, and decision-making processes.
-            *   Relationship history or past engagements between {company_name} and other entities (if mentioned).
-            *   Specific figures, targets, or plans not yet publicly released.
-        *   **Mandatory Integration:** Your analysis and the resulting output **MUST** deeply integrate insights extracted directly from these provided documents. Do not rely solely on web grounding when relevant document information is available.
+    **CRITICAL: Analysis of Provided Documents (PDFs, PPTXs, etc.):**
+        **Priority Source (Internal Context):** You **WILL BE PROVIDED** with relevant documents (e.g., internal presentations, past proposals, meeting notes, org charts). Treat these documents as a **PRIMARY and often MORE CURRENT/DETAILED source of context** than general web search results, especially regarding:
+        **Specific ongoing projects, initiatives, and timelines.
+        **Internal challenges, pain points, and stated needs.
+        **Detailed organizational structure, key personnel, and decision-making processes not publicly disclosed.
+        **Relationship history or past engagements between {company_name} and other entities (if mentioned).
+        **Specific figures, targets, or plans not yet publicly released or detailed.
+        **Mandatory Synthesis and Integration:** Your analysis and the resulting output **MUST** deeply synthesize and integrate insights extracted directly from these provided documents (`[DOCX, reference]`) with information obtained from mandatory web grounding (`[SSX]`). Do not rely solely on one source type when both are available and relevant.
 
-        *   **Document Tagging & Sectional Priority (CRITICAL):**
-            *   You may be provided with documents that are **explicitly tagged as relevant to specific sections** of this report.
-            *   When generating a particular section, if a document is tagged for that section, you **MUST** treat its contents as the **ABSOLUTE PRIMARY SOURCE** for information directly pertaining to that section's topics.
-            *   Synthesize insights from these tagged documents first, then supplement with other provided documents or web grounding as necessary for broader context or untagged information.
-            *   If a tagged document provides specific data (e.g., financial breakdowns, project names, stakeholder lists) requested by the current section, **YOU MUST USE AND CITE THAT DOCUMENTED DATA [DOCX, reference]**. Do not seek this specific data from web grounding if a tagged document provides it.
+        **Document Tagging & Sectional Priority (CRITICAL):**
+        You may be provided with documents that are **explicitly tagged as relevant to specific sections** of this report.
+        When generating a particular section, if a document is tagged for that section, you **MUST** treat its contents as the **ABSOLUTE PRIMARY SOURCE** for information *directly pertaining to that section's specific internal topics or non-public details*.
+        Synthesize insights from these tagged documents first, then supplement with other provided documents or web grounding as necessary for broader context, public fact verification, or untagged information.
+        If a tagged document provides specific data (e.g., financial breakdowns, project names, stakeholder lists) requested by the current section, **YOU MUST USE AND CITE THAT DOCUMENTED DATA [DOCX, reference]**. Only seek this specific data from web grounding if a tagged document does not provide it or if public verification of a public fact is needed.
 
-        *   **Handling Financial Data from Documents (CRITICAL):**
-            *   If a provided document (especially an Excel file, CSV, or clear table within a PDF/PPTX) contains **financial breakdowns by business segment or geographic region for {company_name}**, you **MUST** use this data to populate the respective tables in the financial analysis or business structure sections.
-            *   This document-provided financial breakdown data **OVERRIDES** any conflicting segment/regional financial data found via web grounding. General/consolidated financials can still be cross-verified with web grounding.
-            *   Extract this data meticulously. If an Excel file is provided for financials, its structure (rows/columns for segments/regions) should directly inform your output table.
-            *   Always cite `[DOCX, reference]` for financial data taken directly from provided documents.
+        **Handling Financial Data from Documents (CRITICAL):**
+        If a provided document (especially an Excel file, CSV, or clear table within a PDF/PPTX) contains **financial breakdowns by business segment or geographic region for {company_name}**, you **MUST** use this data to populate the respective tables in the financial analysis or business structure sections.
+        This document-provided financial breakdown data **OVERRIDES** any conflicting segment/regional financial data found via web grounding. General/consolidated financials should still be cross-verified with the latest public web grounding.
+        Extract this data meticulously. If an Excel file is provided for financials, its structure (rows/columns for segments/regions) should directly inform your output table.
+        Always cite `[DOCX, reference]` for financial data taken directly from provided documents.
 
-        *   **Table Data Extraction Protocol (CRITICAL):**
-            *   When extracting tabular data from documents, follow these steps:
+        **Table Data Extraction Protocol (CRITICAL):**
+        When extracting tabular data from documents, follow these steps:
+            1. **Pre-extraction Assessment:** Before creating any output table, first identify all tables in the documents that contain relevant data for the section. Note their structure, column/row headers, and time periods covered.
+            2. **Complete Extraction:** Extract ALL rows and columns from the original table. Never selectively extract only a portion unless explicitly required by the section.
+            3. **Metadata Preservation:** Maintain all time period information, units (e.g., "JPY millions", "% of total"), and footnotes associated with the table.
+            4. **Structure Matching:** When creating your output table, match the document table's structure closely, particularly for segment/region names and time periods.
+            5. **Calculation Validation:** If the document table includes calculated totals/subtotals, verify these match the component values before including in your output.
+
+        **Information Extraction:** Diligently extract information from all parts of the documents:
+            **Text:** Key strategies, statements, goals, challenges, personnel names/roles.
+            **Tables:** Financial data, project timelines, KPI targets, organizational lists. Extract relevant data accurately.
+            **Charts/Graphs:** Summarize the key trends, data points, or conclusions presented visually. Note the existence and location (e.g., "Chart on slide 15 shows X trend [DOC1, Slide 15]"). Do not attempt to recreate charts.
+            **Images/Diagrams:** Interpret information conveyed (e.g., Org charts, process flows, infrastructure diagrams). Describe the key takeaways and note the location (e.g., "Org chart on p.3 indicates... [DOC2, p.3]").
+            
+        **Document Citation (MANDATORY & DISTINCT):**
+            Cite information extracted *directly* from provided documents using the format `[DOCX, reference]`, where 'X' is the document number (if multiple are provided, assume DOC1 if only one) and 'reference' is the specific page number, slide number, section header, or figure/table identifier (e.g., `[DOC1, p.5]`, `[DOC2, Slide 10]`, `[DOC1, Section 3.1]`).
+            This `[DOCX]` citation is **distinct** from the `[SSX]` citation used for web grounding URLs. Use the appropriate citation type based on the information's origin.
+
+        **Dual-Source Information Synthesis Strategy (CRITICAL):**
+            **Balanced Approach:** While provided documents are a PRIMARY source (especially for internal context, specific plans, and non-public details), you **MUST ALWAYS perform thorough web grounding** using official company sources and reputable third-party sources (if grounded by Vertex AI) to ensure accuracy, recency, and completeness of public information.
+            **Document-First for Internal Context:** Treat provided documents as the authoritative source for {company_name}'s internal strategies, specific project details not yet public, detailed timelines, internal challenges, organizational structures not publicly detailed, and relationship history (if mentioned). Cite as `[DOCX, reference]`.
+            **Web-Search for Public Verifiables & Updates:**
+                ALWAYS use web grounding to verify and fetch the LATEST publicly available information for facts like consolidated financial figures, official CEO names, major strategic announcements publicly disclosed, market capitalization, stock ticker information, etc. Cite as `[SSX]`.
+                If a provided document mentions a public fact (e.g., last year's total revenue), ALWAYS cross-verify this with the latest official public filings found via web search.
+            **Recency Protocol:**
+                Pay close attention to the dates of provided documents and web-sourced information.
+                If a provided document contains information that is likely to change (e.g., financial data, MTP targets, management roster) and seems older than readily available public information, prioritize the LATEST verifiable public source for those specific publicly disclosable data points, citing `[SSX]`.
+                For internal strategic intent from an older document, it can still be valuable; use it but note its date (`[DOCX, reference, dated YYYY-MM-DD]`) and seek recent public affirmations or evolutions of that strategy via web search [SSX].
+            **Gap Filling & Contextualization:** Use web grounding `[SSX]` to fill information gaps not covered by the provided documents and to provide broader market/industry context to insights gleaned from documents `[DOCX]`.
+            **Synthesize, Don't Just Aggregate:** Your goal is to produce a coherent analysis that intelligently combines insights from both documents and web grounding. For example, if a document outlines an internal challenge `[DOCX, reference]`, web grounding might reveal a new technology or market trend `[SSX]` that offers a solution or exacerbates the challenge. Always cite the actual source of the information used in your synthesis.
+            
+        **Conflict Resolution (REVISED & CRITICAL):**
+            If conflicting information exists between provided documents (`[DOCX]`) and web grounding results (`[SSX]`):
+            1.  **Financial Breakdowns (Segment/Regional):** Data from a provided document (e.g., an Excel file, a table in a securities report) **MUST** be prioritized over web-grounded summaries for these specific breakdowns [DOCX].
+            2.  **Internal Strategy & Non-Public Details:** The most recent relevant **provided document** is generally the authority for {company_name}'s internal plans, specific project details not publicly announced, and internal organizational nuances [DOCX]. Note the document's date.
+            3.  **Publicly Verifiable Facts (Consolidated Data, CEO, Major Public Announcements, etc.):** The **latest verifiable official public web grounding source** (`[SSX]`) (e.g., official company website, latest annual report/filing found online) takes precedence for facts that are typically disclosed publicly.
+            4.  **Significant Unresolvable Conflicts:** If a critical conflict persists that impacts the analysis (beyond the above rules), briefly note the discrepancy, the sources, and which information is being used and why (e.g., "Document [DOC1, p.X, dated YYYY-MM] states ABC, while recent press release [SS1, dated YYYY-MM-DD] indicates XYZ. For this analysis, XYZ [SS1] is used due to recency for public statements.").
+            5.  **Always Cite Actual Source:** Regardless of prioritization, cite the source from which the information was *actually taken* for the report. If you use the web source due to recency for a public fact, cite `[SSX]`, even if a document had older info.
+                
+        **Document Date & Version Priority:**
+            When multiple provided documents contain similar information (e.g., financial data for the same period), prioritize:
+                1. The most recent document based on creation/modification date
+                2. Final/approved versions over drafts (if version status is indicated)
+                3. The most detailed or comprehensive source (e.g., full financial report over summary)
+            Clearly note the document date when citing financial or time-sensitive information: `[DOCX, reference, dated YYYY-MM-DD]`
+                
+        **Multi-lingual Documents:** Be prepared to process documents in Japanese or English. Extract relevant information regardless of source language and present the final analysis in the target output language: **{language}**.
+        
+        **Silent Omission:** If specific information requested cannot be verified *either* through web grounding (`[SSX]`) *or* within the provided documents (`[DOCX]`) after exhaustive review, omit it silently per the standard handling instructions.
+    """)
+
+# NEW Instruction Block for Document Handling
+DOCUMENT_ANALYSIS_INSTRUCTION = textwrap.dedent("""\
+    **CRITICAL: Analysis of Provided Documents (PDFs, PPTXs, etc.):**
+        **Priority Source (Internal Context):** You **WILL BE PROVIDED** with relevant documents (e.g., internal presentations, past proposals, meeting notes, org charts). Treat these documents as a **PRIMARY and often MORE CURRENT/DETAILED source of context** than general web search results, especially regarding:
+            **Specific ongoing projects, initiatives, and timelines for {company_name}.
+            **Internal challenges, pain points, and stated needs of {company_name}.
+            **Detailed organizational structure, key personnel, and decision-making processes within {company_name}.
+            **Relationship history or past engagements between {company_name} and {context_company_name} (if mentioned).
+            **Specific figures, targets, or plans not yet publicly released by {company_name}.
+        **Mandatory Synthesis and Integration:** Your analysis and the resulting Account Strategy **MUST** deeply synthesize and integrate insights extracted directly from these provided documents (`[DOCX, reference]`) with information obtained from mandatory web grounding (`[SSX]`). Do not rely solely on one source type when both are available and relevant.
+
+        **Document Tagging & Sectional Priority (NEW & CRITICAL):**
+            You may be provided with documents that are **explicitly tagged as relevant to specific sections** of this report.
+            When generating a particular section, if a document is tagged for that section, you **MUST** treat its contents as the **ABSOLUTE PRIMARY SOURCE** for information *directly pertaining to that section's specific internal topics or non-public details for {company_name}*.
+            Synthesize insights from these tagged documents first, then supplement with other provided documents or web grounding as necessary for broader context, public fact verification, or untagged information.
+            If a tagged document provides specific data (e.g., financial breakdowns, project names, stakeholder lists for {company_name}) requested by the current section, **YOU MUST USE AND CITE THAT DOCUMENTED DATA [DOCX, reference]**. Only seek this specific data from web grounding if a tagged document does not provide it or if public verification of a public fact is needed.
+
+        **Handling Financial Data from Documents (NEW & CRITICAL):**
+            If a provided document (especially an Excel file, CSV, or clear table within a PDF/PPTX) contains **financial breakdowns by business segment or geographic region for {company_name}**, you **MUST** use this data to populate the respective tables in the financial analysis or business structure sections.
+            This document-provided financial breakdown data **OVERRIDES** any conflicting segment/regional financial data found via web grounding. General/consolidated financials for {company_name} should still be cross-verified with the latest public web grounding.
+            Extract this data meticulously. If an Excel file is provided for financials, its structure (rows/columns for segments/regions) should directly inform your output table.
+            Always cite `[DOCX, reference]` for financial data taken directly from provided documents.
+
+        **Table Data Extraction Protocol (CRITICAL - Apply if not already covered by section-specific document instructions):**
+            When extracting tabular data from documents for {company_name}, follow these steps:
                 1. **Pre-extraction Assessment:** Before creating any output table, first identify all tables in the documents that contain relevant data for the section. Note their structure, column/row headers, and time periods covered.
                 2. **Complete Extraction:** Extract ALL rows and columns from the original table. Never selectively extract only a portion unless explicitly required by the section.
                 3. **Metadata Preservation:** Maintain all time period information, units (e.g., "JPY millions", "% of total"), and footnotes associated with the table.
                 4. **Structure Matching:** When creating your output table, match the document table's structure closely, particularly for segment/region names and time periods.
                 5. **Calculation Validation:** If the document table includes calculated totals/subtotals, verify these match the component values before including in your output.
 
-        *   **Information Extraction:** Diligently extract information from all parts of the documents:
-            *   **Text:** Key strategies, statements, goals, challenges, personnel names/roles.
-            *   **Tables:** Financial data, project timelines, KPI targets, organizational lists. Extract relevant data accurately.
-            *   **Charts/Graphs:** Summarize the key trends, data points, or conclusions presented visually. Note the existence and location (e.g., "Chart on slide 15 shows X trend [DOC1, Slide 15]"). Do not attempt to recreate charts.
-            *   **Images/Diagrams:** Interpret information conveyed (e.g., Org charts, process flows, infrastructure diagrams). Describe the key takeaways and note the location (e.g., "Org chart on p.3 indicates... [DOC2, p.3]").
-            
-        *   **Document Citation (MANDATORY & DISTINCT):**
-            *   Cite information extracted *directly* from provided documents using the format `[DOCX, reference]`, where 'X' is the document number (if multiple are provided, assume DOC1 if only one) and 'reference' is the specific page number, slide number, section header, or figure/table identifier (e.g., `[DOC1, p.5]`, `[DOC2, Slide 10]`, `[DOC1, Section 3.1]`).
-            *   This `[DOCX]` citation is **distinct** from the `[SSX]` citation used for web grounding URLs. Use the appropriate citation type based on the information's origin.
-            
-        *   **Conflict Resolution:**
-            *   If conflicting information exists between provided documents and web grounding results:
-                *   For **financial breakdowns by business segment or geographic region specifically**, data from a provided document (e.g., an Excel file, a table in a securities report) **MUST** be prioritized over web-grounded summaries [DOCX].
-                *   Prioritize the **latest official provided document** for other internal strategy, plans, and organizational details specific to {company_name}. Cite as `[DOCX]`.
-                *   Prioritize the **latest verifiable public web grounding source** (`[SSX]`) for publicly stated consolidated facts (e.g., official total revenue figures, CEO name).
-                *   If a significant conflict exists that impacts the analysis, briefly note it.
-                
-        *   **Document Date & Version Priority:**
-            *   When multiple documents contain similar information (e.g., financial data for the same period), prioritize:
-                1. The most recent document based on creation/modification date
-                2. Final/approved versions over drafts (if version status is indicated)
-                3. The most detailed or comprehensive source (e.g., full financial report over summary)
-            *   Clearly note the document date when citing financial or time-sensitive information: `[DOCX, reference, dated YYYY-MM-DD]`
-                
-        *   **Multi-lingual Documents:** Be prepared to process documents in Japanese or English. Extract relevant information regardless of source language and present the final analysis in the target output language: **{language}**.
-        
-        *   **Silent Omission:** If specific information requested cannot be verified *either* through web grounding (`[SSX]`) *or* within the provided documents (`[DOCX]`) after exhaustive review, omit it silently per the standard handling instructions.
-    """)
+        **Information Extraction:** Diligently extract information from all parts of the documents about {company_name}:
+            **Text:** Key strategies, statements, goals, challenges, personnel names/roles.
+            **Tables:** Financial data, project timelines, KPI targets, organizational lists. Extract relevant data accurately.
+            **Charts/Graphs:** Summarize the key trends, data points, or conclusions presented visually. Note the existence and location (e.g., "Chart on slide 15 shows X trend [DOC1, Slide 15]"). Do not attempt to recreate charts.
+            **Images/Diagrams:** Interpret information conveyed (e.g., Org charts, process flows, infrastructure diagrams). Describe the key takeaways and note the location (e.g., "Org chart on p.3 indicates... [DOC2, p.3]").
+        **Document Citation (MANDATORY & DISTINCT):**
+            Cite information extracted *directly* from provided documents using the format `[DOCX, reference]`, where 'X' is the document number (if multiple are provided, assume DOC1 if only one) and 'reference' is the specific page number, slide number, section header, or figure/table identifier (e.g., `[DOC1, p.5]`, `[DOC2, Slide 10]`, `[DOC1, Section 3.1]`).
+            This `[DOCX]` citation is **distinct** from the `[SSX]` citation used for web grounding URLs. Use the appropriate citation type based on the information's origin.
 
-# NEW Instruction Block for Document Handling
-DOCUMENT_ANALYSIS_INSTRUCTION = textwrap.dedent("""\
-    *   **CRITICAL: Analysis of Provided Documents (PDFs, PPTXs, etc.):**
-        *   **Priority Source:** You **WILL BE PROVIDED** with relevant documents (e.g., internal presentations, past proposals, meeting notes, org charts). Treat these documents as a **PRIMARY and often MORE CURRENT/DETAILED source of context** than general web search results, especially regarding:
-            *   Specific ongoing projects, initiatives, and timelines.
-            *   Internal challenges, pain points, and stated needs.
-            *   Detailed organizational structure, key personnel, and decision-making processes.
-            *   Relationship history or past engagements between {company_name} and {context_company_name} (if mentioned).
-            *   Specific figures, targets, or plans not yet publicly released.
-        *   **Mandatory Integration:** Your analysis and the resulting Account Strategy **MUST** deeply integrate insights extracted directly from these provided documents. Do not rely solely on web grounding when relevant document information is available.
+        **Dual-Source Information Synthesis Strategy (CRITICAL FOR ACCOUNT STRATEGY):**
+            **Balanced Approach:** While provided documents are a PRIMARY source for {company_name}'s internal context, specific plans, and non-public details, you **MUST ALWAYS perform thorough web grounding** using official company sources and reputable third-party sources (if grounded by Vertex AI) to ensure accuracy, recency, and completeness of public information about {company_name}.
+            **Document-First for Internal Context ({company_name}):** Treat provided documents as the authoritative source for {company_name}'s internal strategies, specific project details not yet public, detailed timelines, internal challenges, organizational structures not publicly detailed, and relationship history with {context_company_name} (if mentioned). Cite as `[DOCX, reference]`.
+            **Web-Search for Public Verifiables & Updates ({company_name}):**
+                ALWAYS use web grounding to verify and fetch the LATEST publicly available information for {company_name} facts like consolidated financial figures, official CEO names, major strategic announcements publicly disclosed, etc. Cite as `[SSX]`.
+                If a provided document mentions a public fact about {company_name}, ALWAYS cross-verify this with the latest official public filings found via web search.
+            **Recency Protocol ({company_name}):**
+                Pay close attention to the dates of provided documents and web-sourced information.
+                If a provided document contains information about {company_name} that is likely to change and seems older than readily available public information, prioritize the LATEST verifiable public source for those specific publicly disclosable data points, citing `[SSX]`.
+                For internal strategic intent for {company_name} from an older document, it can still be valuable; use it but note its date (`[DOCX, reference, dated YYYY-MM-DD]`) and seek recent public affirmations or evolutions of that strategy via web search [SSX].
+            **Gap Filling & Contextualization ({company_name}):** Use web grounding `[SSX]` to fill information gaps not covered by the provided documents and to provide broader market/industry context to insights gleaned from documents `[DOCX]`.
+            **Synthesize for Actionable Strategy:** Your goal is to produce a coherent analysis that intelligently combines insights from both documents and web grounding to inform the Account Strategy for {context_company_name} regarding {company_name}.
+                        
+        **Conflict Resolution (MODIFIED & CRITICAL FOR ACCOUNT STRATEGY):**
+            If conflicting information exists between provided documents (`[DOCX]`) and web grounding results (`[SSX]`) concerning {company_name}:
+                1.  **Financial Breakdowns (Segment/Regional for {company_name}):** Data from a provided document (e.g., an Excel file, a table in a securities report) **MUST** be prioritized over web-grounded summaries for these specific breakdowns [DOCX].
+                2.  **Internal Strategy & Non-Public Details for {company_name}:** The most recent relevant **provided document** is generally the authority for {company_name}'s internal plans, specific project details not publicly announced, and internal organizational nuances [DOCX]. Note the document's date.
+                3.  **Publicly Verifiable Facts about {company_name} (Consolidated Data, CEO, Major Public Announcements, etc.):** The **latest verifiable official public web grounding source** (`[SSX]`) (e.g., official company website, latest annual report/filing found online for {company_name}) takes precedence for facts that are typically disclosed publicly.
+                4.  **Impact on Account Strategy:** If a significant conflict exists that impacts the strategy for {context_company_name} (beyond segment financials, which are ruled by docs for {company_name}), briefly note it.
+                5.  **Always Cite Actual Source:** Regardless of prioritization, cite the source from which the information about {company_name} was *actually taken* for the report.
 
-        *   **Document Tagging & Sectional Priority (NEW & CRITICAL):**
-            *   You may be provided with documents that are **explicitly tagged as relevant to specific sections** of this report.
-            *   When generating a particular section, if a document is tagged for that section, you **MUST** treat its contents as the **ABSOLUTE PRIMARY SOURCE** for information directly pertaining to that section's topics.
-            *   Synthesize insights from these tagged documents first, then supplement with other provided documents or web grounding as necessary for broader context or untagged information.
-            *   If a tagged document provides specific data (e.g., financial breakdowns, project names, stakeholder lists) requested by the current section, **YOU MUST USE AND CITE THAT DOCUMENTED DATA [DOCX, reference]**. Do not seek this specific data from web grounding if a tagged document provides it.
+        **Document Date & Version Priority (Apply if not already covered by section-specific document instructions):**
+            When multiple provided documents contain similar information about {company_name}, prioritize:
+                1. The most recent document based on creation/modification date.
+                2. Final/approved versions over drafts.
+                3. The most detailed or comprehensive source.
+            Clearly note the document date when citing: `[DOCX, reference, dated YYYY-MM-DD]`
 
-        *   **Handling Financial Data from Documents (NEW & CRITICAL):**
-            *   If a provided document (especially an Excel file, CSV, or clear table within a PDF/PPTX) contains **financial breakdowns by business segment or geographic region for {company_name}**, you **MUST** use this data to populate the respective tables in the financial analysis or business structure sections.
-            *   This document-provided financial breakdown data **OVERRIDES** any conflicting segment/regional financial data found via web grounding. General/consolidated financials can still be cross-verified with web grounding.
-            *   Extract this data meticulously. If an Excel file is provided for financials, its structure (rows/columns for segments/regions) should directly inform your output table.
-            *   Always cite `[DOCX, reference]` for financial data taken directly from provided documents.
-
-        *   **Information Extraction:** Diligently extract information from all parts of the documents:
-            *   **Text:** Key strategies, statements, goals, challenges, personnel names/roles.
-            *   **Tables:** Financial data, project timelines, KPI targets, organizational lists. Extract relevant data accurately.
-            *   **Charts/Graphs:** Summarize the key trends, data points, or conclusions presented visually. Note the existence and location (e.g., "Chart on slide 15 shows X trend [DOC1, Slide 15]"). Do not attempt to recreate charts.
-            *   **Images/Diagrams:** Interpret information conveyed (e.g., Org charts, process flows, infrastructure diagrams). Describe the key takeaways and note the location (e.g., "Org chart on p.3 indicates... [DOC2, p.3]").
-        *   **Document Citation (MANDATORY & DISTINCT):**
-            *   Cite information extracted *directly* from provided documents using the format `[DOCX, reference]`, where 'X' is the document number (if multiple are provided, assume DOC1 if only one) and 'reference' is the specific page number, slide number, section header, or figure/table identifier (e.g., `[DOC1, p.5]`, `[DOC2, Slide 10]`, `[DOC1, Section 3.1]`).
-            *   This `[DOCX]` citation is **distinct** from the `[SSX]` citation used for web grounding URLs. Use the appropriate citation type based on the information's origin.
-        *   **Conflict Resolution (MODIFIED):**
-            *   If conflicting information exists between provided documents and web grounding results:
-                *   For **financial breakdowns by business segment or geographic region specifically**, data from a provided document (e.g., an Excel file, a table in a securities report) **MUST** be prioritized over web-grounded summaries [DOCX].
-                *   Prioritize the **latest official provided document** for other internal strategy, plans, and organizational details specific to {company_name}. Cite as `[DOCX]`.
-                *   Prioritize the **latest verifiable public web grounding source** (`[SSX]`) for publicly stated consolidated facts (e.g., official total revenue figures, CEO name).
-                *   If a significant conflict exists that impacts the strategy (beyond segment financials, which are ruled by docs), briefly note it.
-        *   **Multi-lingual Documents:** Be prepared to process documents in Japanese or English. Extract relevant information regardless of source language and present the final analysis in the target output language: **{language}**.
-        *   **Silent Omission:** If specific information requested cannot be verified *either* through web grounding (`[SSX]`) *or* within the provided documents (`[DOCX]`) after exhaustive review, omit it silently per the standard handling instructions.
+        **Multi-lingual Documents:** Be prepared to process documents about {company_name} in Japanese or English. Extract relevant information regardless of source language and present the final analysis in the target output language: **{language}**.
+            **Silent Omission:** If specific information requested about {company_name} cannot be verified *either* through web grounding (`[SSX]`) *or* within the provided documents (`[DOCX]`) after exhaustive review, omit it silently per the standard handling instructions.
     """)
 
 ADDITIONAL_REFINED_INSTRUCTIONS = textwrap.dedent("""\
     **Additional Refined Instructions for Zero Hallucination, Perfect Markdown, and Strict Single-Entity Coverage:**
 
-    *   **Mandatory Self-Check Before Final Output:**
+    **Mandatory Self-Check Before Final Output:**
         - Before producing the final answer, confirm:
             1. All requested sections are fully included with correct headings.
-            2. All factual statements have inline citations [SSX] pointing to valid Vertex AI URLs in the final Sources list.
-            3. Only the permitted Vertex AI grounding URLs are used—no external or fabricated links.
+            2. All factual statements have inline citations (`[SSX]` or `[DOCX, reference]`) pointing to valid Vertex AI URLs in the final Sources list (for `[SSX]`) or to provided documents (for `[DOCX]`).
+            3. Only the permitted Vertex AI grounding URLs are used for `[SSX]`—no external or fabricated links. Document citations `[DOCX, reference]` refer to provided materials.
             4. Markdown headings and tables follow the specified format (##, ###, consistent columns, **strict pipe alignment**). Ensure data within tables is accurate against the source.
-            5. A single "Sources" section is present, properly labeled, and each source is on its own line.
+            5. A single "Sources" section is present (for `[SSX]` URLs only), properly labeled, and each source is on its own line.
             6. Inline citations appear before punctuation where feasible.
-            7. No data or sources are invented. If information is omitted due to lack of verifiable grounding after exhaustive search, this is done silently without comment.
-            8.  **Strict Single-Entity Focus:** Strictly reference only the **exact** company named: **'{company_name}'** (with identifiers like Ticker: '{ticker}', Industry: '{industry}' if provided). **Crucially verify** you are NOT including data from similarly named but unrelated entities (e.g., if the target is 'Marvell Technology, Inc.', absolutely DO NOT include 'Marvel Entertainment' or data related to comics/movies). Confirm if data relates to the parent/consolidated entity or a specific subsidiary, and report accordingly based ONLY on the source [SSX].
-            9. Verify recency of all primary sources used (AR, MTP, website data, etc.).
-            10. Confirm key financial figures and table data points against cited sources. **Verify specifically that all financial data has valid [SSX] citations linked to provided grounding URLs.**
+            7. No data or sources are invented. If information is omitted due to lack of verifiable grounding/documentation after exhaustive search, this is done silently without comment.
+            8.  **Strict Single-Entity Focus:** Strictly reference only the **exact** company named: **'{company_name}'** (with identifiers like Ticker: '{ticker}', Industry: '{industry}' if provided). **Crucially verify** you are NOT including data from similarly named but unrelated entities (e.g., if the target is 'Marvell Technology, Inc.', absolutely DO NOT include 'Marvel Entertainment' or data related to comics/movies). Confirm if data relates to the parent/consolidated entity or a specific subsidiary, and report accordingly based ONLY on the source [SSX or DOCX].
+            9. Verify recency of all primary sources used (AR, MTP, website data, provided documents etc.), applying prioritization rules.
+            10. Confirm key financial figures and table data points against cited sources. **Verify specifically that all financial data has valid `[SSX]` or `[DOCX, reference]` citations linked to provided grounding URLs or documents.**
             11. Ensure lists (KPIs, Officers, Subsidiaries) are complete based on source availability.
             12. Confirm analytical depth provided where requested (explaining 'why' and drivers).
-            13. **Document Prioritization Check:** Verify that data explicitly available in provided documents (especially financial breakdowns or information in tagged documents) has been used and cited with `[DOCX, reference]`, taking precedence over web grounding for that specific information.
+            13. **Dual-Source Synthesis & Prioritization Check:** Verify that:
+                a. Information from provided documents (especially internal context, specific plans, financial breakdowns in tagged documents) has been prioritized appropriately and cited with `[DOCX, reference]`.
+                b. Web grounding (`[SSX]`) was **always performed** to obtain the latest public verifiable facts, fill gaps, and provide context, even when documents were available.
+                c. Information from both document and web sources has been synthesized, and conflicts resolved according to the "Conflict Resolution" and "Dual-Source Information Synthesis Strategy" guidelines (prioritizing latest official public sources for public facts, and latest relevant documents for internal/non-public details).
+                d. Citations accurately reflect the final source used for each piece of information after synthesis and prioritization.
 
-    *   **Exactness of Table Columns:**
+    **Exactness of Table Columns:**
         - Each row in any table **MUST** have the exact same number of columns as the header row, delimited by pipes (`|`).
         - Use exactly one pipe (`|`) at the beginning and end of each row.
         - Ensure header separator lines (`|---|---|`) match the number of columns precisely.
         - If data for a specific cell is missing *in the source* after exhaustive search, use a simple hyphen (-) as a placeholder *only if necessary* to maintain table structure and alignment. Do not add explanatory text.
-        - Always include an inline citation [SSX] if referencing factual numbers within a table cell or in a note below the table referencing the table's data. Verify the cited data matches the source.
+        - Always include an inline citation ([SSX] or [DOCX, reference]) if referencing factual numbers within a table cell or in a note below the table referencing the table's data. Verify the cited data matches the source.
 
-    *   **Quotes with Inline Citations:**
+    **Quotes with Inline Citations:**
         - Any verbatim quote must include:
             1. The speaker's name and date or document reference in parentheses.
-            2. An inline citation [SSX] immediately following.
+            2. An inline citation ([SSX] or [DOCX, reference]) immediately following.
         - This ensures clarity on who said it, when they said it, and the exact source.
 
-    *   **Exactness of Hyperlinks in Sources:**
-        - The final "Sources" section must use the format "* [Supervity Source X](Full_Vertex_AI_Grounding_URL) - Brief annotation [SSX]."
+    **Exactness of Hyperlinks in Sources:**
+        - The final "Sources" section must use the format "* [Supervity Source X](Full_Vertex_AI_Grounding_URL) - Brief annotation [SSX]." (This section is for [SSX] URLs only).
         - Number sources sequentially without skipping.
         - Provide no additional domain expansions or transformations beyond what is given.
         - Do not summarize entire documents—only note which facts the source supports.
 
-    *   **Do Not Summarize Sources:**
+    **Do Not Summarize Sources:**
         - In each source annotation, reference only the specific claim(s) the link supports, not a broad summary.
 
-    *   **High-Priority Checklist (Must Not Be Violated):**
-        1. No fabrication: Silently omit rather than invent ungrounded data after exhaustive search.
+    **High-Priority Checklist (Must Not Be Violated):**
+        1. No fabrication: Silently omit rather than invent ungrounded/undocumented data after exhaustive search.
         2. Adhere strictly to the specified Markdown formats (headings, lists, **perfect tables**).
-        3. Use inline citations [SSX] matching final sources exactly.
-        4. Provide only one "Sources" section at the end.
-        5. Do not use any URLs outside "vertexaisearch.cloud.google.com/..." pattern if not explicitly provided.
+        3. Use inline citations (`[SSX]` or `[DOCX, reference]`) matching final sources (for `[SSX]`) or provided documents exactly.
+        4. Provide only one "Sources" section at the end (for `[SSX]` URLs).
+        5. Do not use any URLs outside "vertexaisearch.cloud.google.com/..." pattern if not explicitly provided for `[SSX]`.
         6.  **Enforce Single-Entity Coverage (CRITICAL):** If '{company_name}' is the focus, DO NOT include other similarly named but unrelated entities. Verify target entity identity throughout.
         7. Complete an internal self-check (see above) to ensure compliance with all instructions before concluding.
 """)
@@ -343,126 +406,132 @@ FINAL_SOURCE_LIST_INSTRUCTIONS_TEMPLATE = textwrap.dedent("""\
     Conclude the *entire* research output, following the 'General Discussion' paragraph, with a clearly marked section titled "**Sources**". This section is critical for verifying the information grounding process AND for document generation.
 
     **1. Content - MANDATORY URL Type & Source Integrity:**
-    *   **Exclusive Source Type:** This list **MUST** contain *only* the specific grounding redirect URLs provided directly by the **Vertex AI Search system** *for this specific query*. These URLs represent the direct grounding evidence used.
-    *   **URL Pattern:** These URLs typically follow the pattern: `https://vertexaisearch.cloud.google.com/grounding-api-redirect/...`. **Only URLs matching this exact pattern are permitted.**
-    *   **Strict Filtering:** Absolutely **DO NOT** include any other type of URL (direct website links, news, PDFs found elsewhere, etc.).
-    *   # NEW: Explicitly exclude DOCX citations from this list
+        **Exclusive Source Type:** This list **MUST** contain *only* the specific grounding redirect URLs provided directly by the **Vertex AI Search system** *for this specific query*. These URLs represent the direct grounding evidence used.
+        **URL Pattern:** These URLs typically follow the pattern: `https://vertexaisearch.cloud.google.com/grounding-api-redirect/...`. **Only URLs matching this exact pattern are permitted.**
+        **Strict Filtering:** Absolutely **DO NOT** include any other type of URL (direct website links, news, PDFs found elsewhere, etc.).
         **Document citations (`[DOCX, reference]`) MUST NOT be included in this final "Sources" list.** Those citations are handled inline only, referencing the provided documents directly. This list is exclusively for the `[SSX]` web grounding URLs.
-    *   **CRITICAL - No Hallucination:** **Under NO circumstances should you invent, fabricate, infer, or reuse `vertexaisearch.cloud.google.com/...` URLs** from previous queries or general knowledge if they were not explicitly provided as grounding results *for this query*. If a fact is identified but lacks a corresponding provided grounding URL after exhaustive search, it must be silently omitted from the report body AND no source should be listed for it.
-    *   **Purpose:** This list verifies the specific web grounding data provided by Vertex AI Search for this request—not external knowledge, other URLs, or provided documents.
+        **CRITICAL - No Hallucination:** **Under NO circumstances should you invent, fabricate, infer, or reuse `vertexaisearch.cloud.google.com/...` URLs** from previous queries or general knowledge if they were not explicitly provided as grounding results *for this query*. If a fact is identified but lacks a corresponding provided grounding URL after exhaustive search, it must be silently omitted from the report body AND no source should be listed for it.
+        **Purpose:** This list verifies the specific web grounding data provided by Vertex AI Search for this request—not external knowledge, other URLs, or provided documents.
 
     **2. Formatting and Annotation (CRITICAL FOR PARSING):**
-    *   **Source Line Format:** Present each source on a completely new line. Each line **MUST** start with a Markdown list indicator (`* ` or `- `) followed by the hyperlink in Markdown format and then its annotation.
-    *   **REQUIRED Format:**
-        * [Supervity Source X](Full_Vertex_AI_Grounding_URL) - Annotation explaining exactly what information is supported (e.g., supports CEO details and FY2023 revenue [SSX]).
-    *   **Sequential Labeling:** The visible hyperlink text **MUST** be labeled sequentially "Supervity Source 1", "Supervity Source 2", etc. Do not skip numbers.
-    *   **Annotation Requirement:** The annotation MUST be:
-        * Included immediately after the hyperlink on the same line, separated by " - ".
-        * Brief and specific, explaining exactly which piece(s) of information in the main body (and referenced with inline citation [SSX]) that grounding URL supports.
-        * Written in the target output language: **{language}**.
+        **Source Line Format:** Present each source on a completely new line. Each line **MUST** start with a Markdown list indicator (`* ` or `- `) followed by the hyperlink in Markdown format and then its annotation.
+        **REQUIRED Format:**
+            [Supervity Source X](Full_Vertex_AI_Grounding_URL) - Annotation explaining exactly what information is supported (e.g., supports CEO details and FY2024 revenue [SSX]).
+        **Sequential Labeling:** The visible hyperlink text **MUST** be labeled sequentially "Supervity Source 1", "Supervity Source 2", etc. Do not skip numbers.
+        **Annotation Requirement:** The annotation MUST be:
+            - Included immediately after the hyperlink on the same line, separated by " - ".
+            - Brief and specific, explaining exactly which piece(s) of information in the main body (and referenced with inline citation [SSX]) that grounding URL supports.
+        **Written in the target output language:** **{language}**.
 
     **3. Quantity and Linkage:**
-    *   **List All Verifiable Used Sources:** List ***every distinct***, verifiable Vertex AI grounding URL provided for this specific query that directly supports content presented in the report body via an inline citation [SSX]. Do *not* include provided grounding URLs if they were not ultimately used to support any statement in the report.
-    *   **Accuracy Over Quantity:** Accuracy and adherence to the grounding rules are absolute. If fewer verifiable URLs are available *and used* from the provided results after exhaustive search, list only those used.
-    *   **Fact Linkage:** Every grounding URL listed MUST directly correspond to facts/figures/statements present in the report body referenced with the corresponding inline citation [SSX].
+        **List All Verifiable Used Sources:** List ***every distinct***, verifiable Vertex AI grounding URL provided for this specific query that directly supports content presented in the report body via an inline citation [SSX]. Do *not* include provided grounding URLs if they were not ultimately used to support any statement in the report.
+        **Accuracy Over Quantity:** Accuracy and adherence to the grounding rules are absolute. If fewer verifiable URLs are available *and used* from the provided results after exhaustive search, list only those used.
+        **Fact Linkage:** Every grounding URL listed MUST directly correspond to facts/figures/statements present in the report body referenced with the corresponding inline citation [SSX].
 
     **4. Content Selection Based on Verifiable Grounding:**
-    *   **Prerequisite for Inclusion:** Only include facts, figures, details, or quotes in the main report if they can be supported by a verifiable Vertex AI grounding URL from this query `[SSX]` or are present in a provided document `[DOCX, reference]` after exhaustive search.
-    *   **Omission of Ungrounded Facts/Sections:** If specific information cannot be supported by a verifiable grounding URL or found in provided documents after exhaustive search, silently omit that detail. If a whole section cannot be grounded/documented after exhaustive search, retain the section heading but omit the content.
+        **Prerequisite for Inclusion:** Only include facts, figures, details, or quotes in the main report if they can be supported by a verifiable Vertex AI grounding URL from this query `[SSX]` or are present in a provided document `[DOCX, reference]` after exhaustive search.
+        **Omission of Ungrounded Facts/Sections:** If specific information cannot be supported by a verifiable grounding URL or found in provided documents after exhaustive search, silently omit that detail. If a whole section cannot be grounded/documented after exhaustive search, retain the section heading but omit the content.
 
     **5. Final Check:**
-    *   Before concluding the response, review the entire output. Verify:
-        * Exclusive use of valid, provided Vertex AI grounding URLs that support cited facts `[SSX]`.
-        * Correct use of `[DOCX, reference]` for documented facts.
-        * Each source in this list is on a new line and follows the correct format.
-        * Every fact in the report body is supported by an appropriate inline citation (`[SSX]` or `[DOCX]`) that corresponds to a source in this list or a provided document.
-        * Every source listed corresponds to at least one inline citation [SSX] in the report body.
-    *   The "**Sources**" section must appear only once, at the end of the entire response.
+        **Before concluding the response, review the entire output. Verify:**
+            - Exclusive use of valid, provided Vertex AI grounding URLs that support cited facts `[SSX]`.
+            - Correct use of `[DOCX, reference]` for documented facts.
+            - Each source in this list is on a new line and follows the correct format.
+            - Every fact in the report body is supported by an appropriate inline citation (`[SSX]` or `[DOCX]`) that corresponds to a source in this list or a provided document.
+            - Every source listed corresponds to at least one inline citation [SSX] in the report body.
+        **Sources Section:** The "**Sources**" section must appear only once, at the end of the entire response.
     """)
 
 HANDLING_MISSING_INFO_INSTRUCTION = textwrap.dedent("""\
-    *   **Handling Missing or Ungrounded Information:**
-        *   **Exhaustive Research First:** Conduct exhaustive research using primarily official company sources (see `RESEARCH_DEPTH_INSTRUCTION`). Search diligently across *multiple relevant primary sources* (e.g., latest AR, previous AR, Financial Statements + Footnotes, Supplementary Data Packs, Tanshin/Filings, MTP docs, IR presentations, Results Overviews, specific website sections, **checking alternate language versions of the website**) for *each data point* before concluding information is unavailable. Check document publication dates for recency.
-        *   **Grounding Requirement for Inclusion:** Information is included only if:
+    **Handling Missing or Ungrounded Information:**
+        **Exhaustive Research First:** Conduct exhaustive research using primarily official company sources (see `RESEARCH_DEPTH_INSTRUCTION`). Search diligently across *multiple relevant primary sources* (e.g., latest AR, previous AR, Financial Statements + Footnotes, Supplementary Data Packs, Tanshin/Filings, MTP docs, IR presentations, Results Overviews, specific website sections, **checking alternate language versions of the website**) for *each data point* before concluding information is unavailable. Check document publication dates for recency.
+        **Grounding Requirement for Inclusion:** Information is included only if:
             1. The information is located in a reliable source document (either provided or found via web search).
             2. For web-found information, a corresponding, verifiable Vertex AI grounding URL (matching the pattern `https://vertexaisearch.cloud.google.com/grounding-api-redirect/...`) is provided in the search results for this query.
             3. For provided document information, it is clearly present within the document.
-        *   **Strict Silent Omission Policy:** If information cannot meet these conditions *after exhaustive research*, omit that specific fact, sentence, or data point entirely. Do **not** include statements like 'Data not found' or 'Information unavailable'. If an entire subsection lacks verifiable grounded/documented data, retain the heading but omit the content. If a table cell requires a placeholder for structure, use only `-` without explanation (verify data is missing *in the source*).
-        *   **No Inference/Fabrication:** Do not infer, guess, or estimate ungrounded information. Do not fabricate grounding URLs.
-        *   **Cross-Language Search:** If necessary, check other language results; if found, translate only the necessary information and cite the corresponding grounding URL `[SSX]` or document reference `[DOCX, reference]`.
+        **Strict Silent Omission Policy:** If information cannot meet these conditions *after exhaustive research*, omit that specific fact, sentence, or data point entirely. Do **not** include statements like 'Data not found' or 'Information unavailable'. If an entire subsection lacks verifiable grounded/documented data, retain the heading but omit the content. If a table cell requires a placeholder for structure, use only `-` without explanation (verify data is missing *in the source*).
+        **No Inference/Fabrication:** Do not infer, guess, or estimate ungrounded information. Do not fabricate grounding URLs.
+        **Cross-Language Search:** If necessary, check other language results; if found, translate only the necessary information and cite the corresponding grounding URL `[SSX]` or document reference `[DOCX, reference]`.
     """)
 
 RESEARCH_DEPTH_INSTRUCTION = textwrap.dedent("""\
-    *   **Research Depth & Source Prioritization:**
-        *   **Exhaustive Search & Recency:** Conduct thorough research for all requested information points. Dig beyond surface-level summaries. **MANDATORY: Prioritize and use the absolute *latest* available official sources.** Check document/website publication dates. Critically, cross-verify information across *multiple relevant primary sources* before accepting it.
-        *   **Multi-Document Search Strategy:** For each key data point (e.g., specific financials, KPIs, management names, strategic initiatives), search across *different types* of official documents (e.g., Annual Report, Financial Statements + Footnotes, Supplementary Data/Databooks, Official Filings like Tanshin/EDINET/SEC, Investor Relations Presentations, Mid-Term Plans, Strategy Day materials, Earnings Call Transcripts & Presentations, official Corporate Website sections, specific Policy documents, official Press Releases).
-        *   **Primary Source Focus (MANDATORY):** Use official company sources primarily, including:
-            *   Latest Annual / Integrated Reports (and previous years *only* for trends/baselines)
-            *   Official Financial Statements (Income Statement, Balance Sheet, Cash Flow) & **Crucially: Footnotes**
-            *   Supplementary Financial Data, Investor Databooks, Official Filings (e.g., **Japanese Annual Security Reports / 有価証券報告書 (Yuho)**, Tanshin, EDINET, **SEC Form 20-F/10-K**, local equivalents) - **prioritize these definitive annual filings.**
-            *   Investor Relations Presentations & Materials (including Mid-Term Plans, Strategy Day presentations)
-            *   Earnings Call Transcripts & Presentations (focus on Q&A sections)
-            *   Official Corporate Website sections (e.g., "About Us", "Investor Relations", "Strategy", "Governance", "Sustainability/ESG", "Management/Directors") - check for "last updated" dates.
-            *   Official Press Releases detailing strategy, financials, organizational structure, or significant events.
-        *   # NEW: Specific Annual Report Prioritization
-            **CRITICAL: Prioritize full, official annual financial reports (e.g., Annual Security Report/有価証券報告書, Form 20-F/10-K, audited consolidated Financial Statements) over summary reports, preliminary results, or quarterly/half-year interim reports.** Only use interim reports if they are the *sole* source for essential recent data *and* acknowledge this limitation internally. Always seek the comprehensive year-end filing for the period requested.
-        *   # NEW: Complex Website Navigation Awareness
+    **Research Depth & Source Prioritization (Dual-Source Mandate):**
+        **Exhaustive Search & Recency (Critical for Both Document and Web Sources):** Conduct thorough research for all requested information points. Dig beyond surface-level summaries. **MANDATORY: Prioritize and use the absolute *latest* available official sources, whether from provided documents or found via web grounding.**
+            **Mandatory Web Grounding:** Even when documents are provided, **ALWAYS conduct comprehensive web searches**. This is critical to:
+                1.  Obtain the LATEST public versions of key official documents (Annual Reports, MTPs, Financial Filings, etc.).
+                2.  Verify and update any publicly disclosable facts (e.g., consolidated financials, CEO name, major public announcements) that might also be in provided documents.
+                3.  Fill information gaps not present in provided documents.
+                4.  Gather broader market context and recent developments.
+            **Thorough Document Analysis:** Concurrently, **meticulously analyze ALL provided documents**. These are invaluable for internal context, specific non-public plans, detailed project information, and historical perspectives that web searches may not reveal.
+            **Date Awareness:** Always check and note document/website publication dates. Critically, cross-verify and synthesize information across *multiple relevant primary sources* (both document and web) before accepting it, applying the "Dual-Source Information Synthesis Strategy" and "Conflict Resolution" guidelines.
+        **Multi-Document Search Strategy:** For each key data point (e.g., specific financials, KPIs, management names, strategic initiatives), search across *different types* of official documents (e.g., Annual Report, Financial Statements + Footnotes, Supplementary Data/Databooks, Official Filings like Tanshin/EDINET/SEC, Investor Relations Presentations, Mid-Term Plans, Strategy Day materials, Earnings Call Transcripts & Presentations, official Corporate Website sections, specific Policy documents, official Press Releases) – considering both provided documents and those found via web grounding.
+        **Primary Source Focus (MANDATORY):** Use official company sources primarily, including:
+            - Latest Annual / Integrated Reports (and previous years *only* for trends/baselines)
+            - Official Financial Statements (Income Statement, Balance Sheet, Cash Flow) & **Crucially: Footnotes**
+            - Supplementary Financial Data, Investor Databooks, Official Filings (e.g., **Japanese Annual Security Reports / 有価証券報告書 (Yuho)**, Tanshin, EDINET, **SEC Form 20-F/10-K**, local equivalents) - **prioritize these definitive annual filings.**
+            - Investor Relations Presentations & Materials (including Mid-Term Plans, Strategy Day presentations)
+            - Earnings Call Transcripts & Presentations (focus on Q&A sections)
+            - Official Corporate Website sections (e.g., "About Us", "Investor Relations", "Strategy", "Governance", "Sustainability/ESG", "Management/Directors") - check for "last updated" dates.
+            - Official Press Releases detailing strategy, financials, organizational structure, or significant events.
+            - And, critically, any relevant PROVIDED DOCUMENTS.
+        **Specific Annual Report Prioritization:**
+            **CRITICAL: Prioritize full, official annual financial reports (e.g., Annual Security Report/有価証券報告書, Form 20-F/10-K, audited consolidated Financial Statements) over summary reports, preliminary results, or quarterly/half-year interim reports, whether found via web or provided.** Only use interim reports if they are the *sole* source for essential recent data *and* acknowledge this limitation internally. Always seek the comprehensive year-end filing for the period requested.
+        **Complex Website Navigation Awareness:**
             **Be aware that consumer-facing websites (e.g., `brand.com`) are often distinct from the Corporate / Investor Relations site (e.g., `brand-global.com/corp/`, `brand.com/ir/`). Navigate diligently:**
-            *   Look for "Investor Relations (IR)", "Shareholders & Investors", "Company Information", or "Corporate" links, often in the site footer or main navigation.
-            *   Within IR sections, common paths are: IR Home -> IR Library / Financial Information / Filings -> Annual Reports / SEC Filings / Financial Results / Security Reports (有価証券報告書).
-            *   Search specifically for the document types mentioned above covering the required fiscal year (e.g., "FY2023 ended March 31, 2024").
-        *   # NEW: Language/Regional Site Variation Handling
+            - Look for "Investor Relations (IR)", "Shareholders & Investors", "Company Information", or "Corporate" links, often in the site footer or main navigation.
+            - Within IR sections, common paths are: IR Home -> IR Library / Financial Information / Filings -> Annual Reports / SEC Filings / Financial Results / Security Reports (有価証券報告書).
+            - Search specifically for the document types mentioned above covering the required fiscal year (e.g., "FY2024 ended March 31, 2025").
+        **Language/Regional Site Variation Handling:**
             **Check both Japanese and English versions of the corporate/IR website if necessary.** Content availability (especially specific report types like Security Reports vs. Financial Results summaries) and site structure can differ. If a key document is missing on one language site, check the other before concluding it's unavailable. Prioritize the most comprehensive/official version found.
-        *   **Forbidden Sources:** Do NOT use:
-            *   Wikipedia
-            *   Generic blogs, forums, or social media posts
-            *   Press release aggregation sites (unless linking directly to an official release)
-            *   Outdated market reports (unless historical context is explicitly requested)
-            *   Competitor websites/reports (except in competitive analysis with extreme caution and strict grounding rules)
-            *   Generic news articles unless they report specific, verifiable events from highly reputable sources (e.g., Nikkei, Bloomberg, Reuters, FT, WSJ) AND can be **cross-verified against primary sources** and have grounding URLs.
-        *   **Data Verification:** Cross-verify critical figures (e.g., revenue, profit, key KPIs, management names/titles) between sources where possible (e.g., AR summary vs. detailed financials vs. website).
-        *   **Group Structure Handling:** Clearly identify if data refers to the consolidated parent group (**{company_name}**) or a specific target subsidiary mentioned *in the source*. If the prompt focuses on the parent, report consolidated data unless segment data is explicitly requested and available. If focusing on a subsidiary mentioned in the source, clearly label it. Actively search for subsidiary-specific sections, appendices, or footnotes within parent company reports. Acknowledge (internally for decision-making) potential data limitations for non-publicly listed subsidiaries. **Do not report on subsidiaries unless directly relevant to the parent's structure or segment reporting as per the source [SSX].**
-        *   **Noting Charts/Figures:** If relevant visual information (org charts, strategy frameworks, process diagrams) is found in sources, note its existence and location (e.g., "An organizational chart is provided on page X of the 2023 Annual Report [SSX]"). Do not attempt to recreate complex visuals textually.
-        *   **Management Commentary:** Actively incorporate direct management commentary and analysis from these sources to explain trends and rationale.
-        *   **Recency:** Focus on the most recent 1-2 years for qualitative analysis; use the last 3 full fiscal years for financial trends. Clearly state the reporting period for all data.
-        *   **Secondary Sources:** Use reputable secondary sources sparingly *only* for context (e.g., credit ratings, widely accepted industry trends) or verification, always with clear attribution **and cross-reference with primary sources and grounding URLs.**
-        *   **Handling Conflicts:** If conflicting information is found between official sources, prioritize the most recent, definitive source. Note discrepancies with dual citations if significant (e.g., [SSX, SSY]).
-        *   **Calculation Guidelines:** If metrics are not explicitly reported but must be calculated:
-            *   Calculate only if all necessary base data (e.g., Net Income, Revenue, Equity, Assets, Debt) is available and verifiable from grounded sources.
-            *   Clearly state the formula used, and if averages are used, mention that (e.g., "ROE (Calculated: Net Income / Average Shareholders' Equity)") [SSX]. **Cite the sources for all base data points used in the calculation.**
-        *   **Confirmation of Unavailability (Internal):** Only conclude information is unavailable *internally* after a diligent, confirmed search across *multiple* relevant primary source *types* (including different website sections and language versions) fails to yield verifiable, grounded data. **Do not state this conclusion in the output.**
+        **Forbidden Sources:** Do NOT use:
+            - Wikipedia
+            - Generic blogs, forums, or social media posts
+            - Press release aggregation sites (unless linking directly to an official release)
+            - Outdated market reports (unless historical context is explicitly requested)
+            - Competitor websites/reports (except in competitive analysis with extreme caution and strict grounding rules)
+            - Generic news articles unless they report specific, verifiable events from highly reputable sources (e.g., Nikkei, Bloomberg, Reuters, FT, WSJ) AND can be **cross-verified against primary sources** and have grounding URLs.
+        **Data Verification & Synthesis:** Cross-verify critical figures (e.g., revenue, profit, key KPIs, management names/titles) between sources (documents and web) where possible. Synthesize information according to the Dual-Source Synthesis Strategy and Conflict Resolution rules.
+        **Group Structure Handling:** Clearly identify if data refers to the consolidated parent group (**{company_name}**) or a specific target subsidiary mentioned *in the source*. If the prompt focuses on the parent, report consolidated data unless segment data is explicitly requested and available. If focusing on a subsidiary mentioned in the source, clearly label it. Actively search for subsidiary-specific sections, appendices, or footnotes within parent company reports. Acknowledge (internally for decision-making) potential data limitations for non-publicly listed subsidiaries. **Do not report on subsidiaries unless directly relevant to the parent's structure or segment reporting as per the source [SSX or DOCX].**
+        **Noting Charts/Figures:** If relevant visual information (org charts, strategy frameworks, process diagrams) is found in sources (documents or web), note its existence and location (e.g., "An organizational chart is provided on page X of the 2024 Annual Report [SSX]" or "[DOC1, Slide 7]"). Do not attempt to recreate complex visuals textually.
+        **Management Commentary:** Actively incorporate direct management commentary and analysis from these sources (documents and web) to explain trends and rationale.
+        **Recency:** Focus on the most recent 1-2 years for qualitative analysis; use the last 3 full fiscal years for financial trends. Clearly state the reporting period for all data.
+        **Secondary Sources:** Use reputable secondary sources sparingly *only* for context (e.g., credit ratings, widely accepted industry trends) or verification, always with clear attribution **and cross-reference with primary sources (web or document) and grounding URLs/document citations.**
+        **Handling Conflicts:** Apply the revised Conflict Resolution rules detailed in the Document Analysis instructions.
+        **Calculation Guidelines:** If metrics are not explicitly reported but must be calculated:
+            - Calculate only if all necessary base data (e.g., Net Income, Revenue, Equity, Assets, Debt) is available and verifiable from grounded web sources or provided documents.
+            - Clearly state the formula used, and if averages are used, mention that (e.g., "ROE (Calculated: Net Income / Average Shareholders' Equity)") [SSX and/or DOCX for base data]. **Cite the sources for all base data points used in the calculation.**
+        **Confirmation of Unavailability (Internal):** Only conclude information is unavailable *internally* after a diligent, confirmed search across *multiple* relevant primary source *types* (including different website sections and language versions, AND all provided documents) fails to yield verifiable, grounded/documented data. **Do not state this conclusion in the output.**
     """)
 
 ANALYSIS_SYNTHESIS_INSTRUCTION = textwrap.dedent("""\
-    *   **Analysis and Synthesis:**
-        *   Beyond listing factual information, provide concise analysis where requested (e.g., explain trends, discuss implications, identify drivers, assess effectiveness).
-        *   **Explicitly address "why":** For every data point or trend, explain *why* it is occurring or what the key drivers are, based on sourced information or management commentary [SSX]. Quantify trends (e.g., "Revenue increased by 12% YoY [SSX] due to...").
-        *   **Comparative Analysis:** Compare data points (e.g., YoY changes, company performance against MTP targets or baseline values, segment performance differences) where appropriate and insightful, using sourced data [SSX]. Compare against industry benchmarks *only* if reliable, grounded benchmark data is available [SSY].
-        *   **Linking Information:** In the General Discussion, explicitly tie together findings from different sections to present a coherent overall analysis (e.g., link financial performance [SSX] with strategic initiatives [SSY] and competitive pressures [SSZ]).
-        *   **Causal Linkage:** Look for and report management commentary that explains causal relationships (e.g., "Management stated the increase in SG&A was driven by investment in X [SSX]").
-        *   **DX Implications:** In summary/discussion sections, actively consider and mention potential Digital Transformation (DX) implications, opportunities, or challenges arising from the findings in other sections, citing the relevant data (e.g., "The stated need for supply chain efficiency [SSX] presents a clear opportunity for DX solutions like...")
+    **Analysis and Synthesis:**
+        - Beyond listing factual information, provide concise analysis where requested (e.g., explain trends, discuss implications, identify drivers, assess effectiveness).
+        - **Explicitly address "why":** For every data point or trend, explain *why* it is occurring or what the key drivers are, based on sourced information or management commentary [SSX]. Quantify trends (e.g., "Revenue increased by 12% YoY [SSX] due to...").
+        - **Comparative Analysis:** Compare data points (e.g., YoY changes, company performance against MTP targets or baseline values, segment performance differences) where appropriate and insightful, using sourced data [SSX]. Compare against industry benchmarks *only* if reliable, grounded benchmark data is available [SSY].
+        - **Linking Information:** In the General Discussion, explicitly tie together findings from different sections to present a coherent overall analysis (e.g., link financial performance [SSX] with strategic initiatives [SSY] and competitive pressures [SSZ]).
+        - **Causal Linkage:** Look for and report management commentary that explains causal relationships (e.g., "Management stated the increase in SG&A was driven by investment in X [SSX]").
+        - **DX Implications:** In summary/discussion sections, actively consider and mention potential Digital Transformation (DX) implications, opportunities, or challenges arising from the findings in other sections, citing the relevant data (e.g., "The stated need for supply chain efficiency [SSX] presents a clear opportunity for DX solutions like...")
     """)
 
 INLINE_CITATION_INSTRUCTION = textwrap.dedent("""\
-    *   **Inline Citation Requirement:**
-        *   # MODIFIED: Mention dual citation types
-            Every factual claim, data point (including figures in tables), direct quote, and specific summary **MUST** include an inline citation indicating its source. Use the format `[SSX]` for information derived from **verifiable web grounding URLs** provided by Vertex AI Search, where X corresponds exactly to the sequential number of the source in the final Sources list. Use the format `[DOCX, reference]` for information derived directly from **provided documents**, where X is the document number and 'reference' is the page/slide/section.
-        *   Place the inline citation immediately after the supported statement and **before punctuation** when possible (e.g., "Revenue was ¥100B [SS1].", "The plan outlines three pillars [DOC1, p.5].").
-        *   If a single sentence contains multiple distinct facts from different sources, cite each appropriately (e.g., "Revenue was ¥100B [SS1] and the internal target is ¥110B [DOC2, Slide 10].").
-        *   If a single source (web or document) supports multiple facts within a paragraph or table, reuse the same citation.
-        *   This ensures that each fact is directly verifiable against either the corresponding "Supervity Source X" in the final Sources list or the referenced provided document.
+    **Inline Citation Requirement:**
+        - Every factual claim, data point (including figures in tables), direct quote, and specific summary **MUST** include an inline citation indicating its source. Use the format `[SSX]` for information derived from **verifiable web grounding URLs** provided by Vertex AI Search, where X corresponds exactly to the sequential number of the source in the final Sources list. Use the format `[DOCX, reference]` for information derived directly from **provided documents**, where X is the document number and 'reference' is the page/slide/section.
+        - Place the inline citation immediately after the supported statement and **before punctuation** when possible (e.g., "Revenue was ¥100B [SS1].", "The plan outlines three pillars [DOC1, p.5].").
+        - If a single sentence contains multiple distinct facts from different sources, cite each appropriately (e.g., "Revenue was ¥100B [SS1] and the internal target is ¥110B [DOC2, Slide 10].").
+        - If a single source (web or document) supports multiple facts within a paragraph or table, reuse the same citation.
+        - This ensures that each fact is directly verifiable against either the corresponding "Supervity Source X" in the final Sources list or the referenced provided document.
     """)
 
 SPECIFICITY_INSTRUCTION = textwrap.dedent("""\
-    *   **Specificity and Granularity:**
-        *   For all time-sensitive data points (e.g., financials, employee counts, management changes, MTP periods, KPIs, targets), include specific dates or reporting periods (e.g., "as of 2024-03-31", "for FY2023 ended March 31, 2024", "MTP covers FY2024-FY2026").
-        *   Define any industry-specific or company-specific terms or acronyms on their first use.
-        *   Quantify qualitative descriptions with specific numbers or percentages where available (e.g., "significant growth of 12% YoY [SSX]").
-        *   List concrete examples rather than vague categories when describing initiatives, strategies, or risks.
+    **Specificity and Granularity:**
+        - For all time-sensitive data points (e.g., financials, employee counts, management changes, MTP periods, KPIs, targets), include specific dates or reporting periods (e.g., "as of 2025-03-31", "for FY2024 ended March 31, 2025", "MTP covers FY2025-FY2027").
+        - Define any industry-specific or company-specific terms or acronyms on their first use.
+        - Quantify qualitative descriptions with specific numbers or percentages where available (e.g., "significant growth of 12% YoY [SSX]").
+        - List concrete examples rather than vague categories when describing initiatives, strategies, or risks.
     """)
 
 AUDIENCE_CONTEXT_REMINDER = textwrap.dedent("""\
-    *   **Audience Relevance:** Keep the target audience (Japanese corporate strategy professionals) in mind. Frame analysis and the 'General Discussion' to highlight strategic implications, competitive positioning, market opportunities/risks, and operational insights relevant for potential partnership, investment, or competitive assessment. Use terminology common in Japanese business contexts where appropriate and natural for the {language}.
+    **Audience Relevance:** Keep the target audience (Japanese corporate strategy professionals) in mind. Frame analysis and the 'General Discussion' to highlight strategic implications, competitive positioning, market opportunities/risks, and operational insights relevant for potential partnership, investment, or competitive assessment. Use terminology common in Japanese business contexts where appropriate and natural for the {language}.
     """)
 
 def get_language_instruction(language: str) -> str:
@@ -500,63 +569,63 @@ def get_language_specific_headings(language: str, nesic_analysis_heading: str = 
 BASE_FORMATTING_INSTRUCTIONS = textwrap.dedent("""\
     Output Format & Quality Requirements:
 
-    *   **Direct Start & No Conversational Text:** Begin the response directly with the first requested section heading (e.g., `## 1. Core Corporate Information`). No introductory or concluding remarks are allowed.
+    **Direct Start & No Conversational Text:** Begin the response directly with the first requested section heading (e.g., `## 1. Core Corporate Information`). No introductory or concluding remarks are allowed.
 
-    *   **Strict Markdown Formatting Requirements:**
-        *   Use valid and consistent Markdown throughout the entire document.
-        *   **Section Formatting:** Sections MUST be numbered exactly as specified in the prompt (e.g., `## 1. Core Corporate Information`). Use `##` for main sections.
-        *   **Subsection Formatting:** Use `###` for subsections and maintain hierarchical structure.
-        *   **List Formatting:** Use asterisks (`*`) or hyphens (`-`) for bullets with consistent indentation (use 4 spaces for sub-bullets relative to the parent bullet).
-        *   **Tables (CRITICAL FOR RENDERING):** Format all tables with *perfect* Markdown table syntax. Pay meticulous attention to:
-            *   **Exact Column Count:** Every single row (header, separator, data) **MUST** have the *exact same number of columns* delimited by pipes (`|`).
-            *   **Mandatory Start/End Pipes:** Every single row **MUST** begin with a pipe (`|`) and end with a pipe (`|`).
-            *   **Header Separator Match:** The separator line (`|---|---|...`) **MUST** match the number of header columns exactly.
-            *   **Alignment (Visual Aid):** While not strictly required by all parsers, using spaces within cells to visually align pipes in the raw Markdown source significantly helps prevent errors.
-            *   **Table Data Integrity:** Every data point within a table cell MUST be verified against the cited source [SSX] for accuracy and correct reporting period.
-            *   **Missing Data Placeholder:** If data for a specific cell is missing *in the source* after exhaustive search, use only a hyphen (`-`) as a placeholder if required for table structure. Do not add explanatory text.
-            *   **Example of Perfect Table (Re-emphasized):**
-                | Header 1        | Header 2      | Header 3          | Source(s) | <--- Ends with pipe
-                |-----------------|---------------|-------------------|-----------| <--- Matches 4 columns, ends with pipe
-                | Data Item 1     | 123.45        | Long text content | [SS1]     | <--- Matches 4 columns, ends with pipe
-                | Another Item    | -             | More text here    | [SS2]     | <--- Matches 4 columns, ends with pipe
-                | Final Item Data | 5,000 (JPY M) | Short text        | [SS1, SS3]| <--- Matches 4 columns, ends with pipe
-            *   **Consequence of Error:** Even a single missing pipe or mismatched column count will likely cause the table to render incorrectly or not at all. Double-check every table before output.
-        *   **Code Blocks:** Use triple backticks (```) for code blocks.
-        *   **Quotes:** Use Markdown quote syntax (`>`) for direct quotations.
+    **Strict Markdown Formatting Requirements:**
+    * Use valid and consistent Markdown throughout the entire document.
+    * **Section Formatting:** Sections MUST be numbered exactly as specified in the prompt (e.g., `## 1. Core Corporate Information`). Use `##` for main sections.
+    * **Subsection Formatting:** Use `###` for subsections and maintain hierarchical structure.
+    * **List Formatting:** Use asterisks (`*`) or hyphens (`-`) for bullets with consistent indentation (use 4 spaces for sub-bullets relative to the parent bullet).
+    * **CRITICAL - Tables Must Be Formatted Precisely:** Format all tables with proper Markdown syntax:
+        * Every row must have the exact same number of columns, separated by pipes (`|`)
+        * Every row must begin and end with a pipe (`|`)
+        * The separator line (second row) must match the number of columns with `|---|---|...`
+        * Do NOT place tables in code blocks (```) - this will prevent proper rendering
+        * Example of correct table format:
 
-    *   **Optimal Structure & Readability:**
-        *   Present numerical data in tables with proper alignment and headers. Right-align numbers where possible using spaces.
-        *   Use bullet points for lists of items or characteristics.
-        *   Use paragraphs for narrative descriptions and analysis.
-        *   Maintain consistent formatting across similar elements.
-        *   **Content Organization:** Ensure a logical sequence within each section (e.g., chronological for trends, priority for lists).
-        *   **Conciseness:** Provide detailed yet concise language—be specific without unnecessary verbosity.
-        *   **Quantitative Summaries:** Where summary paragraphs are requested (e.g., end of Basic Info, General Discussions), integrate key figures and quantitative trends from the analysis, not just qualitative descriptions.
+        | Header 1 | Header 2 | Header 3 |
+        |----------|----------|----------|
+        | Data 1   | Data 2   | Data 3   |
+        | More 1   | More 2   | More 3   |
 
-    *   **Data Formatting Consistency:**
-        *   Use appropriate thousands separators for numbers per the target language: **{language}**.
-        *   **Currency Specification:** Always specify the currency (e.g., ¥, $, €, JPY, USD, EUR) for all monetary values along with the reporting period (e.g., "¥1,234 million for FY2023").
-        *   Format dates consistently (e.g., YYYY-MM-DD or as commonly used in the target language for official reports).
-        *   Use consistent percentage formatting (e.g., 12.5%).
+    * **Quote Formatting:** Use `>` symbol for direct quotations (not code blocks).
+    * **IMPORTANT - Do NOT Use Code Blocks:** Never place regular content, tables, or lists inside code blocks (```). Only use code blocks for actual code snippets.
+    
+    **WARNING - NO GRAY BOXES FOR TABLES:** Tables should NEVER appear in gray code blocks with triple backticks around them. If you're seeing tables displayed in gray code blocks in the output, this is incorrect. Tables should be rendered directly as Markdown tables, not as code blocks. This is a critical formatting error that prevents proper table rendering.
 
-    *   **Section Completion Verification:**
-        *   Every section requested in the prompt MUST be included in the output.
-        *   Sections must appear in the exact order specified.
-        *   Each section must be properly labeled with the exact heading.
-        *   If verifiable data for an entire subsection is missing after exhaustive research, omit the *content* of that subsection, but **retain the subsection heading** (e.g., `### Subsection Title`) to maintain the document's structure as requested by the prompt. Do not state that data is missing.
+    **Table Formatting: DO vs. DON'T Examples:**
+    
+    ✅ CORRECT WAY (Tables as direct Markdown):
+    
+    | Company | Revenue | Year |
+    |---------|---------|------|
+    | ABC Inc | $10M    | 2024 |
+    | XYZ Ltd | $8.5M   | 2024 |
+    
+    ❌ INCORRECT WAY (Never put tables in code blocks like this):
+    
+    ```
+    | Company | Revenue | Year |
+    |---------|---------|------|
+    | ABC Inc | $10M    | 2024 |
+    | XYZ Ltd | $8.5M   | 2024 |
+    ```
 
-    *   **Tone and Detail Level:**
-        *   Maintain a professional, objective, and analytical tone suited for a Japanese corporate strategy audience.
-        *   Provide granular detail (e.g., figures, dates, metrics) while avoiding promotional language.
+    **Data Formatting Consistency:**
+    * Use appropriate thousands separators for numbers per the target language: **{language}**.
+    * **Currency Specification:** Always specify the currency (e.g., ¥, $, €, JPY, USD, EUR) for all monetary values along with the reporting period (e.g., "¥1,234 million for FY2024").
+    * Format dates consistently (e.g., YYYY-MM-DD or as commonly used in the target language for official reports).
+    * Use consistent percentage formatting (e.g., 12.5%).
 
-    *   **Completeness and Verification:**
-        *   Address all requested points in each section by providing the information or silently omitting it if ungrounded after exhaustive search.
-        *   Verify that every section, the General Discussion, and the Sources list are present and adhere to the instructions.
-        *   Perform a final internal review before output.
+    **Section Completion Verification:**
+    * Every section requested in the prompt MUST be included in the output.
+    * Sections must appear in the exact order specified.
+    * Each section must be properly labeled with the exact heading.
+    * If verifiable data for an entire subsection is missing after exhaustive research, omit the *content* of that subsection, but **retain the subsection heading** (e.g., `### Subsection Title`) to maintain the document's structure as requested by the prompt. Do not state that data is missing.
 
-    *   **Sources List:** The Sources list must be present at the very end and adhere strictly to the instructions (see `FINAL_SOURCE_LIST_INSTRUCTIONS_TEMPLATE`). Format: `* [Supervity Source X](URL) - Annotation [SSX].`
+    **Sources List:** The Sources list must be present at the very end and adhere strictly to the instructions (see `FINAL_SOURCE_LIST_INSTRUCTIONS_TEMPLATE`). Format: `* [Supervity Source X](URL) - Annotation [SSX].`
 
-    *   **Inline Citation & Specificity:** Incorporate the inline citation [SSX] for every factual claim (see Inline Citation Requirement) and include specific dates/definitions (see Specificity and Granularity).
+    **Inline Citation & Specificity:** Incorporate the inline citation [SSX] for every factual claim (see Inline Citation Requirement) and include specific dates/definitions (see Specificity and Granularity).
     """)
 
 FINAL_REVIEW_INSTRUCTION = textwrap.dedent("""\
@@ -586,6 +655,19 @@ FINAL_REVIEW_INSTRUCTION = textwrap.dedent("""\
             * Tables derived from documents maintain their original structure, terminology, and data organization.
             * Document dates and versions have been properly noted for time-sensitive information.
             * The most authoritative and recent documents have been prioritized when multiple sources contain similar information.
+
+        *   **Web Grounding Verification:**
+            * Web grounding has been performed for ALL sections, even when documents are provided.
+            * Latest public information has been obtained through web grounding to verify and update public facts.
+            * Web grounding has been used to fill information gaps not covered by provided documents.
+            * Information from web grounding has been appropriately cited with [SSX].
+            * Proper synthesis of web-grounded information with document insights has been performed.
+
+        *   **Dual-Source Synthesis Assessment:**
+            * Information from both documents and web grounding has been properly synthesized.
+            * Conflicts between document information and web-grounded information have been resolved according to the guidelines.
+            * Citations accurately reflect the actual source used after conflict resolution and prioritization.
+            * A balanced approach has been maintained, using documents for internal context and web grounding for public facts and context.
 
         *   **Entity Focus Validation for {company_name}:**
             * All information specifically relates to the requested entity.
@@ -637,6 +719,7 @@ def get_basic_prompt(company_name: str, language: str = "Japanese", ticker: Opti
     formatted_section_document_instructions = get_section_specific_document_instructions("basic")
 
     prompt = f"""
+{NO_THINKING_INSTRUCTION}
 **CRITICAL FOCUS:** This entire request is *exclusively* about the specific entity: {context_str}. Absolutely DO NOT include information about any other similarly named companies (e.g., entertainment, unrelated industries). Verify the identity of the company for all sourced information.
 
 Comprehensive Corporate Profile, Strategic Overview, and Organizational Analysis of {company_name}
@@ -648,7 +731,7 @@ Target Audience Context: {formatted_audience_reminder}
 {get_language_instruction(language)}
 
 Research Requirements:
-Conduct in-depth research using {company_name}'s official sources. Perform exhaustive checks across multiple primary sources before omitting any requested information silently. Every factual claim, data point, and summary must include an inline citation in the format [SSX]. Provide specific dates or reporting periods (e.g., "as of 2024-03-31", "for FY2023"). Ensure every claim is grounded by a verifiable Vertex AI grounding URL referenced back in the final Sources list for **{company_name}**. Use the absolute latest available official information.
+Conduct in-depth research using {company_name}'s official sources. Perform exhaustive checks across multiple primary sources before omitting any requested information silently. Every factual claim, data point, and summary must include an inline citation in the format [SSX]. Provide specific dates or reporting periods (e.g., "as of 2025-03-31", "for FY2024"). Ensure every claim is grounded by a verifiable Vertex AI grounding URL referenced back in the final Sources list for **{company_name}**. Use the absolute latest available official information.
 {HANDLING_MISSING_INFO_INSTRUCTION}
 {formatted_research_depth}
 {formatted_section_document_instructions}
@@ -658,67 +741,94 @@ Conduct in-depth research using {company_name}'s official sources. Perform exhau
 
 {formatted_additional_instructions}
 
-## 1. Core Corporate Information:
-    *   **Stock Ticker Symbol / Security Code:** (if publicly traded, verify it matches '{ticker or "N/A"}') [SSX]
-    *   **Primary Industry Classification:** (e.g., GICS, SIC – specify the standard, verify it aligns with '{industry or "N/A"}') [SSX]
-    *   **Full Name and Title of Current CEO:** [SSX] (Verify against latest official sources)
-    *   **Full Registered Headquarters Address:** [SSX]
-    *   **Main Corporate Telephone Number:** [SSX]
-    *   **Official Corporate Website URL:** [SSX]
-    *   **Date of Establishment/Incorporation:** (e.g., "established on YYYY-MM-DD") [SSX]
-    *   **Date of Initial Public Offering (IPO)/Listing:** (if applicable, include exact date) [SSX]
-    *   **Primary Stock Exchange/Market where listed:** (if applicable) [SSX]
-    *   **Most Recently Reported Official Capital Figure:** (specify currency and reporting period, verify against latest financial statement/filing) [SSX]
-    *   **Most Recently Reported Total Number of Employees:** (include reporting date and source; quantify any significant changes YoY if available [SSY]) [SSX]
-    *   *Summary Paragraph:* Briefly summarize the company's situation based on the figures above, incorporating quantitative trends where available (e.g., "Capital increased by X% in the latest period...") [SSX].
+## 1. Core Corporate Information
+**Stock Ticker Symbol / Security Code:** (if publicly traded, verify it matches '{ticker or "N/A"}') [SSX]
 
-## 2. Recent Business Overview:
-    *   Provide a detailed summary of **{company_name}**'s core business operations and primary revenue streams based on the most recent official reports [SSX]. Include specific product or service details and any recent operational developments (with exact dates or periods).
-    *   Include key highlights of recent business performance (e.g., "revenue increased by 12% in FY2023 [SSX]") or operational changes (e.g., restructuring, new market entries with dates), and explain their significance [SSX].
+**Primary Industry Classification:** (e.g., GICS, SIC – specify the standard, verify it aligns with '{industry or "N/A"}') [SSX]
 
-## 3. Business Environment Analysis:
-    *   Describe the current market environment by identifying major competitors and market dynamics (include specific names, market share percentages if available and verifiable, and exact data dates as available [SSX]).
-    *   Identify and explain key industry trends (e.g., technological shifts, regulatory changes) including specific figures or percentages where possible [SSX]. Note where these trends are discussed in company reports [SSY].
-    *   ***Discuss the strategic implications and opportunities/threats these trends pose for {company_name} from a Japanese corporate perspective [SSX].***
+**Full Name and Title of Current CEO:** [SSX] (Verify against latest official sources)
 
-## 4. Organizational Structure Overview:
-    *   Describe the high-level organizational structure as stated in official sources (e.g., "divisional based on Mobility, Safety, and Entertainment sectors [SSX]", "functional", "matrix") and reference the source (e.g., "as shown in the Annual Report 2023, p. XX") [SSX].
-    *   If an official organization chart is found in sources, note its existence and location (e.g., "An org chart is available on the company website under 'About Us' [SSX]" or "Figure X in the Annual Report [SSY] shows the structure.").
-    *   Briefly comment on the rationale behind the structure (if stated) and its potential implications for decision-making and agility [SSX].
+**Full Registered Headquarters Address:** [SSX]
 
-## 5. Key Management Personnel & Responsibilities:
-    *   **Prioritize the latest official company website** for the most current lists of Directors and Executive Officers. Cross-reference with recent Annual Reports or official filings for verification and responsibilities. Ensure names/titles relate specifically to **{company_name}**, not exclusively a parent company unless specified.
-    *   Present the Board of Directors and Audit & Supervisory Board members (or equivalent) in **perfectly formatted Markdown tables**. Include Name, Title, Key Notes (e.g., External, Committee Chair, Independence status), and Source(s). State the 'as of' date clearly for the data. Use '-' for missing data points only if needed for table structure. Ensure the *complete list* as per the source is included.
-        *   **Board of Directors (as of [Date] [SSX]):**
+**Main Corporate Telephone Number:** [SSX]
+
+**Official Corporate Website URL:** [SSX]
+
+**Date of Establishment/Incorporation:** (e.g., "established on YYYY-MM-DD") [SSX]
+
+**Date of Initial Public Offering (IPO)/Listing:** (if applicable, include exact date) [SSX]
+
+**Primary Stock Exchange/Market where listed:** (if applicable) [SSX]
+
+**Most Recently Reported Official Capital Figure:** (specify currency and reporting period, verify against latest financial statement/filing) [SSX]
+
+**Most Recently Reported Total Number of Employees:** (include reporting date and source; quantify any significant changes YoY if available [SSY]) [SSX]
+
+*Summary Paragraph:* Briefly summarize the company's situation based on the figures above, incorporating quantitative trends where available (e.g., "Capital increased by X% in the latest period...") [SSX].
+
+## 2. Recent Business Overview
+Provide a detailed summary of **{company_name}**'s core business operations and primary revenue streams based on the most recent official reports [SSX]. Include specific product or service details and any recent operational developments (with exact dates or periods).
+
+Include key highlights of recent business performance (e.g., "revenue increased by 12% in FY2024 [SSX]") or operational changes (e.g., restructuring, new market entries with dates), and explain their significance [SSX].
+
+## 3. Business Environment Analysis
+Describe the current market environment by identifying major competitors and market dynamics (include specific names, market share percentages if available and verifiable, and exact data dates as available [SSX]).
+
+Identify and explain key industry trends (e.g., technological shifts, regulatory changes) including specific figures or percentages where possible [SSX]. Note where these trends are discussed in company reports [SSY].
+
+***Discuss the strategic implications and opportunities/threats these trends pose for {company_name} from a Japanese corporate perspective [SSX].***
+
+## 4. Organizational Structure Overview
+Describe the high-level organizational structure as stated in official sources (e.g., "divisional based on Mobility, Safety, and Entertainment sectors [SSX]", "functional", "matrix") and reference the source (e.g., "as shown in the Annual Report 2024, p. XX") [SSX].
+
+If an official organization chart is found in sources, note its existence and location (e.g., "An org chart is available on the company website under 'About Us' [SSX]" or "Figure X in the Annual Report [SSY] shows the structure.").
+
+Briefly comment on the rationale behind the structure (if stated) and its potential implications for decision-making and agility [SSX].
+
+## 5. Key Management Personnel & Responsibilities
+**Prioritize the latest official company website** for the most current lists of Directors and Executive Officers. Cross-reference with recent Annual Reports or official filings for verification and responsibilities. Ensure names/titles relate specifically to **{company_name}**, not exclusively a parent company unless specified.
+
+Present the Board of Directors and Audit & Supervisory Board members (or equivalent) in **perfectly formatted Markdown tables**. Include Name, Title, Key Notes (e.g., External, Committee Chair, Independence status), and Source(s). State the 'as of' date clearly for the data. Use '-' for missing data points only if needed for table structure. Ensure the *complete list* as per the source is included.
+
+**Board of Directors (as of [Date] [SSX]):**
             | Name | Title | Notes | Source(s) |
             |------|-------|-------|-----------|
             |      |       |       |           |
-        *   **Audit & Supervisory Board Members / Equivalent (as of [Date] [SSX]):**
+
+**Audit & Supervisory Board Members / Equivalent (as of [Date] [SSX]):**
             | Name | Title | Notes | Source(s) |
             |------|-------|-------|-----------|
             |      |       |       |           |
-    *   **Executive Officers (Management Team):** List key members (beyond CEO) with titles and detailed descriptions of their strategic responsibilities (e.g., COO Mobility, CFO, CTO, Head of Administration). Include start dates or tenure if available [SSX]. Ensure the *complete list* as per the source is included. Use a list or table for clarity.
 
-## 6. Subsidiaries List:
-    *   List *major* direct subsidiaries (global where applicable) based solely on official documentation (e.g., list in Annual Report Appendix). Acknowledge this may not be exhaustive. For each subsidiary, include primary business activity, country of operation, and, if available, ownership percentage as stated in the source [SSX]. Present this in a **perfectly formatted Markdown table** for clarity. Use '-' for missing data points only if needed for table structure. Note any recent major M&A impacting the subsidiary structure if verifiable [SSY].
+**Executive Officers (Management Team):** List key members (beyond CEO) with titles and detailed descriptions of their strategic responsibilities (e.g., COO Mobility, CFO, CTO, Head of Administration). Include start dates or tenure if available [SSX]. Ensure the *complete list* as per the source is included. Use a list or table for clarity.
+
+## 6. Subsidiaries List
+List *major* direct subsidiaries (global where applicable) based solely on official documentation (e.g., list in Annual Report Appendix). Acknowledge this may not be exhaustive. For each subsidiary, include primary business activity, country of operation, and, if available, ownership percentage as stated in the source [SSX]. Present this in a **perfectly formatted Markdown table** for clarity. Use '-' for missing data points only if needed for table structure. Note any recent major M&A impacting the subsidiary structure if verifiable [SSY].
+
         | Subsidiary Name | Primary Business | Country | Ownership % (if stated) | Source(s) |
         |-----------------|------------------|---------|-------------------------|-----------|
         |                 |                  |         | -                       |           |
 
-## 7. Leadership Strategic Outlook (Verbatim Quotes):
-    *   **CEO & Chairman:** Provide at least four direct, meaningful quotes focusing on long-term vision, key challenges, growth strategies, and market outlook. Each quote must be followed immediately by its source citation in parentheses (e.g., "(Source: Annual Report 2023, p.5)"), and an inline citation [SSX] must confirm the quote's origin.
-    *   **Other Key Executives (e.g., CFO, CSO, CTO, COO, relevant BU Heads):** Provide verifiable quotes (aim for 1-3 per relevant executive if strategically insightful) detailing their perspective on their area of responsibility (e.g., financial strategy, tech roadmap, operational plans) with similar detailed attribution and inline citation [SSX].
+## 7. Leadership Strategic Outlook (Verbatim Quotes)
+**CEO & Chairman:** Provide at least four direct, meaningful quotes focusing on long-term vision, key challenges, growth strategies, and market outlook. Each quote must be followed immediately by its source citation in parentheses (e.g., "(Source: Annual Report 2024, p.5)"), and an inline citation [SSX] must confirm the quote's origin.
 
-## 8. General Discussion:
-    *   Provide a concluding single paragraph (approximately 300-500 words).
-    *   **Synthesize** the key findings exclusively from Sections 1-7 about **{company_name}**, explicitly linking analysis (e.g., "The organizational structure described in section 4 [SSX] supports the strategic focus mentioned by the CEO [SSY]...") and ensuring every claim is supported by an inline citation. Incorporate key quantitative points.
-    *   Structure your analysis logically by starting with an overall assessment, then discussing strengths and opportunities, followed by weaknesses and risks, and concluding with an outlook relevant for the Japanese audience. Look for and mention potential DX implications arising from the company's structure or leadership messages [SSX].
-    *   **Do not introduce new factual claims** that are not derived from the previous sections about **{company_name}**.
+**Other Key Executives (e.g., CFO, CSO, CTO, COO, relevant BU Heads):** Provide verifiable quotes (aim for 1-3 per relevant executive if strategically insightful) detailing their perspective on their area of responsibility (e.g., financial strategy, tech roadmap, operational plans) with similar detailed attribution and inline citation [SSX].
+
+## 8. General Discussion
+Provide a concluding single paragraph (approximately 300-500 words).
+
+**Synthesize** the key findings exclusively from Sections 1-7 about **{company_name}**, explicitly linking analysis (e.g., "The organizational structure described in section 4 [SSX] supports the strategic focus mentioned by the CEO [SSY]...") and ensuring every claim is supported by an inline citation. Incorporate key quantitative points.
+
+Structure your analysis logically by starting with an overall assessment, then discussing strengths and opportunities, followed by weaknesses and risks, and concluding with an outlook relevant for the Japanese audience. Look for and mention potential DX implications arising from the company's structure or leadership messages [SSX].
+
+**Do not introduce new factual claims** that are not derived from the previous sections about **{company_name}**.
 
 Source and Accuracy Requirements:
-*   **Accuracy:** All information must be factually correct, current, and verifiable against grounded sources for **{company_name}**. Specify currency and reporting periods for all monetary data. Omit unverified data silently after exhaustive search. Verify management lists against latest website data.
-*   **Source Specificity (Traceability):** Every data point, claim, and quote must be traceable to a specific source using an inline citation (e.g., [SSX]). These must match the final Sources list.
-*   **Source Quality:** Use only official company sources primarily. Secondary sources may be used sparingly for context but must be verified and grounded. All sources must be clearly cited.
+**Accuracy:** All information must be factually correct, current, and verifiable against grounded sources for **{company_name}**. Specify currency and reporting periods for all monetary data. Omit unverified data silently after exhaustive search. Verify management lists against latest website data.
+
+**Source Specificity (Traceability):** Every data point, claim, and quote must be traceable to a specific source using an inline citation (e.g., [SSX]). These must match the final Sources list.
+
+**Source Quality:** Use only official company sources primarily. Secondary sources may be used sparingly for context but must be verified and grounded. All sources must be clearly cited.
 
 {formatted_completion_template}
 {formatted_final_review}
@@ -751,7 +861,7 @@ def get_financial_prompt(company_name: str, language: str = "Japanese", ticker: 
     *   **Document-Driven Financial Analysis (NEW & CRITICAL):**
         *   If financial documents (statements, reports, spreadsheets) are provided:
             1. **Complete Document Review:** Before starting analysis, scan ALL provided financial documents to identify the most comprehensive and recent sources. Don't rely on just one document until you've confirmed it's the most authoritative.
-            2. **Period Identification:** Precisely identify reporting periods in documents, noting fiscal year conventions (e.g., "FY2023 ended March 31, 2024" versus "FY2023 ended December 31, 2023").
+            2. **Period Identification:** Precisely identify reporting periods in documents, noting fiscal year conventions (e.g., "FY2024 ended March 31, 2025" versus "FY2024 ended December 31, 2024").
             3. **Data Series Integrity:** When extracting multi-year data (e.g., 3-year trends), ensure data comes from consistent accounting periods and methodologies. Check for any noted accounting changes or restatements in document footnotes.
             4. **Currency & Unit Verification:** Explicitly verify and note all currency units (JPY, USD, EUR) and multipliers (thousands, millions, billions) as specified in document headers, footers, or notes.
             5. **Segment Definition Changes:** Check for any notes about changes in business segment definitions or geographic region classifications over the reporting periods. Document these changes in your analysis.
@@ -783,13 +893,14 @@ def get_financial_prompt(company_name: str, language: str = "Japanese", ticker: 
     """)
 
     prompt = f"""
+{NO_THINKING_INSTRUCTION}
 **CRITICAL FOCUS:** This entire request is *exclusively* about the specific entity: {context_str}. Absolutely DO NOT include information about any other similarly named companies. Verify the identity for all financial data sourced.
 
 Comprehensive Strategic Financial Analysis of {company_name} (Last 3 Fiscal Years)
 
 Objective: Deliver a complete, analytically rich, and meticulously sourced financial profile of **{company_name}** using the last three full fiscal years. Combine traditional financial metrics with analysis of profitability, cost structure, cash flow, investments, and contextual factors. Provide deep analysis explaining trends and drivers, requiring meticulous sourcing and in-depth analysis explaining the 'why' behind the numbers. Focus strictly on {context_str}.
 
-Target Audience Context: This analysis is for a **Japanese corporate strategy audience**. Use Japanese terminology when appropriate (e.g., "売上総利益" for Gross Profit) and ensure that all monetary values specify currency (e.g., JPY millions) and reporting period (e.g., "FY2023 ended March 31, 2024") with exact dates where available [SSX]. {formatted_audience_reminder}
+Target Audience Context: This analysis is for a **Japanese corporate strategy audience**. Use Japanese terminology when appropriate (e.g., "売上総利益" for Gross Profit) and ensure that all monetary values specify currency (e.g., JPY millions) and reporting period (e.g., "FY2024 ended March 31, 2025") with exact dates where available [SSX]. {formatted_audience_reminder}
 
 {get_language_instruction(language)}
 
@@ -807,15 +918,18 @@ For each section, provide verifiable data with inline citations [SSX] and specif
 
 {formatted_additional_instructions}
 
-## 1. Top Shareholders:
-    *   List major shareholders of {company_name} (typically the top 5-10, with exact ownership percentages, reporting dates, and source references) in a **perfectly formatted Markdown table** [SSX]. Use '-' for missing data points only if needed for table structure.
+## 1. Top Shareholders
+List major shareholders of {company_name} (typically the top 5-10, with exact ownership percentages, reporting dates, and source references) in a **perfectly formatted Markdown table** [SSX]. Use '-' for missing data points only if needed for table structure.
+
         | Shareholder Name | Ownership % | As of Date | Source(s) |
         |------------------|-------------|------------|-----------|
         |                  |             |            |           |
-    *   Briefly comment on the stability or influence of the ownership structure on the financial strategy of {company_name} [SSX].
 
-## 2. Key Financial Metrics (3-Year Trend in a Table):
-    *   Present the following metrics for {company_name} for the last 3 full fiscal years in a **perfectly formatted Markdown table**. Specify currency (e.g., JPY millions) and fiscal year (e.g., FY2021, FY2022, FY2023) for each value. Verify data accuracy. If calculated, note this below the table or in a 'Notes' column and cite base data sources. Cite sources for all data [SSX]. Use '-' for missing data points only if needed for table structure. *Consider adding industry-specific metrics if relevant and reported (see instructions).*
+Briefly comment on the stability or influence of the ownership structure on the financial strategy of {company_name} [SSX].
+
+## 2. Key Financial Metrics (3-Year Trend in a Table)
+Present the following metrics for {company_name} for the last 3 full fiscal years in a **perfectly formatted Markdown table**. Specify currency (e.g., JPY millions) and fiscal year (e.g., FY2023, FY2024, FY2025) for each value. Verify data accuracy. If calculated, note this below the table or in a 'Notes' column and cite base data sources. Cite sources for all data [SSX]. Use '-' for missing data points only if needed for table structure. *Consider adding industry-specific metrics if relevant and reported (see instructions).*
+
         | Metric                                          | FYXXXX | FYYYYY | FYZZZZ | Notes / Calculation Basis (Cite Base Data) | Source(s) |
         |-------------------------------------------------|--------|--------|--------|---------------------------------------------|-----------|
         | Total Revenue / Net Sales / Premium Income etc. |        |        |        | (Specify metric used)                       | [SSX]     |
@@ -840,25 +954,30 @@ For each section, provide verifiable data with inline citations [SSX] and specif
         | Net Cash from Investing                         |        |        |        |                                             | [SSX]     |
         | Net Cash from Financing                         |        |        |        |                                             | [SSX]     |
         | (Add other key metrics like Premiums In-Force if needed) |       |        |        |                                             | [SSX]     |
-    *   **Analyze** key trends observed in the table for {company_name} (YoY changes, CAGR). Explain the *drivers* behind these trends based on source commentary [SSX]. Identify any standout performance aspects (positive or negative) [SSY].
 
-## 3. Profitability Analysis (3-Year Trend):
-    *   Analyze trends in Operating Margin and Net Income Margin for {company_name} in more detail (building on the table above). Explain the *drivers* behind these trends (e.g., cost variations, pricing power, product mix shifts, one-off items mentioned in reports) with specific evidence and inline citations [SSX]. Quantify changes YoY. Discuss the sustainability of current profitability levels [SSY].
+**Analyze** key trends observed in the table for {company_name} (YoY changes, CAGR). Explain the *drivers* behind these trends based on source commentary [SSX]. Identify any standout performance aspects (positive or negative) [SSY].
 
-## 4. Segment-Level Performance (if applicable, Last 3 Fiscal Years):
-    *   **ATTENTION:** Check for provided documents (e.g., Excel, tables in reports) tagged for this section that detail segment performance. Prioritize these sources [DOCX, reference].
-    *   **Pre-Analysis Step for Segment Data (Internal Thought Process):**
-        *   Before generating the Segment Performance table below, mentally (or as a scratchpad note if it helps you ensure accuracy) list the key data points (Segment Name, Metric, FYXXXX, FYYYYY, FYZZZZ) you have extracted directly from the provided document(s) [DOCX, reference(s)] that are tagged or relevant for this section.
-        *   Confirm these documented values will be used in the table. This step is to ensure you prioritize documented financial breakdowns.
-    *   **Document-Based Table Extraction (CRITICAL):**
-        *   If a document contains a segment performance table:
+## 3. Profitability Analysis (3-Year Trend)
+Analyze trends in Operating Margin and Net Income Margin for {company_name} in more detail (building on the table above). Explain the *drivers* behind these trends (e.g., cost variations, pricing power, product mix shifts, one-off items mentioned in reports) with specific evidence and inline citations [SSX]. Quantify changes YoY. Discuss the sustainability of current profitability levels [SSY].
+
+## 4. Segment-Level Performance (if applicable, Last 3 Fiscal Years)
+**ATTENTION:** Check for provided documents (e.g., Excel, tables in reports) tagged for this section that detail segment performance. Prioritize these sources [DOCX, reference].
+
+**Pre-Analysis Step for Segment Data (Internal Thought Process):**
+* Before generating the Segment Performance table below, mentally (or as a scratchpad note if it helps you ensure accuracy) list the key data points (Segment Name, Metric, FYXXXX, FYYYYY, FYZZZZ) you have extracted directly from the provided document(s) [DOCX, reference(s)] that are tagged or relevant for this section.
+* Confirm these documented values will be used in the table. This step is to ensure you prioritize documented financial breakdowns.
+
+**Document-Based Table Extraction (CRITICAL):**
+* If a document contains a segment performance table:
             1. **Preserve EXACT Structure:** Maintain the precise rows, columns, groupings, and hierarchies from the source table
             2. **Keep ALL Data Elements:** Include ALL segments, sub-segments, reconciliation items, and totals as presented in the source
             3. **Maintain Terminology:** Use the EXACT segment names, column headings, and descriptors from the source
             4. **Extract Full Time Series:** Include all time periods present in the document table (up to 3 fiscal years)
             5. **Preserve Units & Footnotes:** Include the currency, units of measurement, and any footnote references
             6. **Note Document Source:** Clearly cite the specific document, page/slide, and table title [DOCX, reference]
-    *   If segment data is available for {company_name} (e.g., Mobility, Safety, Entertainment), present revenue, operating profit, and margin percentages for each segment in a **perfectly formatted Markdown table** (include currency and fiscal year, verify data) [SSX or DOCX]. Use '-' for missing data points only if needed for table structure.
+
+If segment data is available for {company_name} (e.g., Mobility, Safety, Entertainment), present revenue, operating profit, and margin percentages for each segment in a **perfectly formatted Markdown table** (include currency and fiscal year, verify data) [SSX or DOCX]. Use '-' for missing data points only if needed for table structure.
+
         | Segment Name | Metric           | FYXXXX | FYYYYY | FYZZZZ | Source(s) |
         |--------------|------------------|--------|--------|--------|-----------|
         | Segment A    | Revenue          |        |        |        | [SSX]     |
@@ -866,10 +985,12 @@ For each section, provide verifiable data with inline citations [SSX] and specif
         | Segment A    | Operating Margin%|        |        |        | [SSX]     |
         | Segment B    | Revenue          |        |        |        | [SSY]     |
         | ...          | ...              |        |        |        |           |
-    *   Analyze trends, growth drivers, and the relative contribution/profitability of each segment of {company_name}, citing specific figures [SSX]. Identify key profit-driving segments based on available data [SSY].
 
-## 5. Cost Structure Analysis (3-Year Trend):
-    *   Detail the composition and trends of major operating costs for {company_name} using data from financial statements [SSX]. Present in a **perfectly formatted Markdown table** if helpful and data is verifiable. Verify data accuracy. Use '-' for missing data points only if needed for table structure.
+Analyze trends, growth drivers, and the relative contribution/profitability of each segment of {company_name}, citing specific figures [SSX]. Identify key profit-driving segments based on available data [SSY].
+
+## 5. Cost Structure Analysis (3-Year Trend)
+Detail the composition and trends of major operating costs for {company_name} using data from financial statements [SSX]. Present in a **perfectly formatted Markdown table** if helpful and data is verifiable. Verify data accuracy. Use '-' for missing data points only if needed for table structure.
+
         | Cost Item        | FYXXXX (JPY M) | FYXXXX (% of Rev) | FYYYYY (JPY M) | FYYYYY (% of Rev) | FYZZZZ (JPY M) | FYZZZZ (% of Rev) | Source(s) |
         |------------------|----------------|-------------------|----------------|-------------------|----------------|-------------------|-----------|
         | COGS             |                |                   |                |                   |                |                   | [SSX]     |
@@ -877,39 +998,75 @@ For each section, provide verifiable data with inline citations [SSX] and specif
         |  - R&D (if sep)  |                |                   |                |                   |                |                   | [SSZ]     |
         |  - Personnel     |                |                   |                |                   |                |                   | [SSW]     |
         |  - Other SG&A    |                |                   |                |                   |                |                   | [SSV]     |
-    *   Analyze drivers behind {company_name}'s cost trends (e.g., raw material prices, personnel costs, restructuring effects) and comment on cost control effectiveness based on commentary in reports [SSX]. Look for fixed vs variable cost commentary if available [SSY].
 
-## 6. Cash Flow Statement Analysis (3-Year Trend):
-    *   Analyze trends in Operating Cash Flow (OCF) for {company_name}. Explain key drivers, differentiating between changes in profit and changes in working capital components (receivables, payables, inventory) based on the cash flow statement details [SSX].
-    *   Detail major Investing Cash Flow activities (e.g., CapEx, acquisitions) and Financing Cash Flow activities (e.g., debt issuance/repayment, dividends, share buybacks) for {company_name} with specific amounts (specify currency) and context [SSX].
-    *   Calculate and analyze Free Cash Flow (FCF = OCF - CapEx) trend for {company_name} [SSX]. Cite base data sources [SSY, SSZ]. Comment on the company's capacity to fund operations, investments, and shareholder returns based on FCF generation [SSW].
+Analyze drivers behind {company_name}'s cost trends (e.g., raw material prices, personnel costs, restructuring effects) and comment on cost control effectiveness based on commentary in reports [SSX]. Look for fixed vs variable cost commentary if available [SSY].
 
-## 7. Investment Activities (Last 3 Years):
-    *   Describe major M&A deals involving {company_name} (target, deal value if public, date, strategic rationale) [SSX].
-    *   Analyze {company_name}'s capital expenditure (CapEx) patterns (total amount, key areas like factories/equipment/software) [SSY].
-    *   Detail any significant corporate venture capital (CVC) or R&D investments by {company_name} with specific amounts (specify currency and reporting period) and stated goals [SSZ].
-    *   Analyze the strategic rationale and potential financial impact (if commented on by management) of these investments for {company_name} [SSX, SSY, SSZ].
+## 6. Cash Flow Statement Analysis (3-Year Trend)
+Analyze trends in Operating Cash Flow (OCF) for {company_name}. Explain key drivers, differentiating between changes in profit and changes in working capital components (receivables, payables, inventory) based on the cash flow statement details [SSX].
 
-## 8. Contextual Financial Factors:
-    *   Identify significant one-time events impacting {company_name} (e.g., asset sales, restructuring charges, impairment losses, litigation settlements) reported in the last 3 years, specifying dates, financial impacts (gain/loss in specified currency), and source notes [SSX].
-    *   Discuss any significant accounting standard changes that impacted {company_name}'s reported figures during the period [SSY].
-    *   Mention any key external economic or regulatory factors explicitly cited by {company_name}'s management as impacting financial performance [SSZ].
-    *   Critically analyze the quality and sustainability of {company_name}'s reported earnings, considering the impact of one-time items and accounting choices noted [SSX, SSY, SSZ].
+Detail major Investing Cash Flow activities (e.g., CapEx, acquisitions) and Financing Cash Flow activities (e.g., debt issuance/repayment, dividends, share buybacks) for {company_name} with specific amounts (specify currency) and context [SSX].
 
-## 9. Credit Ratings & Financial Health (if available):
-    *   List current and historical credit ratings for {company_name} from major agencies (e.g., S&P, Moody's, Fitch, R&I, JCR) with reporting dates [SSX].
-    *   Summarize key highlights or concerns mentioned in the rating agencies' commentary regarding {company_name} [SSY].
-    *   Analyze the implications of these ratings (or lack thereof) for {company_name}'s financial flexibility and cost of capital [SSX, SSY].
+Calculate and analyze Free Cash Flow (FCF = OCF - CapEx) trend for {company_name} [SSX]. Cite base data sources [SSY, SSZ]. Comment on the company's capacity to fund operations, investments, and shareholder returns based on FCF generation [SSW].
 
-## General Discussion:
-    *   Provide a concluding single paragraph (300-500 words) that synthesizes the findings exclusively from Sections 1-9 regarding **{company_name}**. Explicitly connect the analysis (e.g., "The strong cash flow generation [SSX] supports the investment strategy outlined in Section 7 [SSY], despite the margin pressure noted in Section 3 [SSZ]..."). Explain *why* trends are occurring based on the analysis. Incorporate key quantitative results. Discuss implications for future financial performance and strategic options for {company_name}.
-    *   Structure the discussion logically by starting with an overall assessment of {company_name}'s financial health and performance trends, then discussing profitability drivers, cash flow adequacy, investment effectiveness, and concluding with an outlook (including strengths/weaknesses) tailored to a Japanese audience.
-    *   Do not introduce any new factual claims that are not supported by previous sections and citations about **{company_name}**.
+## 7. Investment Activities (Last 3 Years)
+Describe major M&A deals involving {company_name} (target, deal value if public, date, strategic rationale) [SSX].
+
+Analyze {company_name}'s capital expenditure (CapEx) patterns (total amount, key areas like factories/equipment/software) [SSY].
+
+Detail any significant corporate venture capital (CVC) or R&D investments by {company_name} with specific amounts (specify currency and reporting period) and stated goals [SSZ].
+
+Analyze the strategic rationale and potential financial impact (if commented on by management) of these investments for {company_name} [SSX, SSY, SSZ].
+
+## 8. Contextual Financial Factors
+Identify significant one-time events impacting {company_name} (e.g., asset sales, restructuring charges, impairment losses, litigation settlements) reported in the last 3 years (2023-2025), specifying dates, financial impacts (gain/loss in specified currency), and source notes [SSX].
+
+Discuss any significant accounting standard changes that impacted {company_name}'s reported figures during the period [SSY].
+
+Mention any key external economic or regulatory factors explicitly cited by {company_name}'s management as impacting financial performance [SSZ].
+
+Critically analyze the quality and sustainability of {company_name}'s reported earnings, considering the impact of one-time items and accounting choices noted [SSX, SSY, SSZ].
+
+## 9. Credit Ratings & Financial Health (if available)
+List current credit ratings for {company_name} from major agencies (e.g., S&P, Moody's, R&I, JCR) with rating dates and outlooks in a **perfectly formatted Markdown table** [SSX]. Use '-' for missing data points only if needed for table structure.
+
+| Rating Agency | Current Rating | Outlook | As of Date | Source(s) |
+|---------------|----------------|---------|------------|-----------|
+|               |                |         |            |           |
+
+Summarize key financial health indicators (e.g., liquidity ratios, interest coverage) for {company_name} [SSY].
+
+Analyze management's stated policy regarding financial leverage, capital structure, and liquidity management for {company_name} [SSZ].
+
+## 10. Shareholder Returns (3-Year Trend)
+Present dividend history for {company_name} for the last 3 fiscal years (including interim/final, total annual amount, dividend payout ratio) in a **perfectly formatted Markdown table** [SSX]. Verify data accuracy. Use '-' for missing data points only if needed for table structure.
+
+| Period | Dividend per Share | Payout Ratio (%) | Notes | Source(s) |
+|--------|-------------------|------------------|-------|-----------|
+| FYXXXX |                   |                  |       |           |
+| FYYYYY |                   |                  |       |           |
+| FYZZZZ |                   |                  |       |           |
+
+Detail any share buyback programs executed by {company_name} in the last 3 years (2023-2025) (announcement date, amount, execution status) [SSY].
+
+Analyze {company_name}'s stated capital allocation policy/shareholder return policy and its implementation in practice [SSZ]. Comment on the balance between shareholder returns and retained earnings for business investment [SSW].
+
+## 11. General Discussion
+Provide a concluding single paragraph (300-500 words) synthesizing the key financial insights about {company_name} from sections 1-10, focusing on:
+
+1. Overall financial health and trajectory
+2. Key strengths and vulnerabilities identified
+3. Major financial decisions and their strategic rationale
+4. Primary financial drivers affecting performance
+5. Potential implications for future financial performance
+
+Each insight must be supported by an inline citation [SSX, SSY] linking back to the specific sections and data points. Look for and note potential DX implications arising from financial constraints or growth areas that could require or benefit from digital transformation [SSZ].
 
 Source and Accuracy Requirements:
-*   **Accuracy:** All information must be current and verifiable for **{company_name}**. Specify currency (e.g., JPY millions) and reporting period (e.g., FY2023) for every monetary value. Silently omit unverified data after exhaustive search. Verify table data meticulously. **Every financial figure must have a grounding URL citation [SSX].**
-*   **Source Specificity:** Every data point (in text, tables) must include an inline citation [SSX] that corresponds to a specific source in the final Sources list. Cite base data for calculations.
-*   **Source Quality:** Rely primarily on official company sources for **{company_name}** (Financial Statements, Footnotes, Tanshin, IR Presentations, Annual Reports). Secondary sources may be used sparingly for context (like ratings) and must be clearly cited, verified, and grounded.
+**Accuracy:** All financial information must be factually correct, current, and verifiable against grounded sources for **{company_name}**. Specify currency and reporting periods for all monetary data. After exhaustive search, silently omit unverified data. Verify table data meticulously. **Every financial figure must have a grounding URL citation [SSX].**
+
+**Source Specificity (Traceability):** Every financial figure, data point, claim, and calculation must be traceable to a specific source using inline citations (e.g., [SSX], [DOCX]). These must match the final Sources list.
+
+**Source Quality:** Use only official company sources (Financial Statements, Annual Reports, Investor Presentations, IR Materials, Official Filings) for primary financial data. Secondary sources may be used sparingly for context (e.g., credit ratings) but must be verified and grounded. All sources must be clearly cited.
 
 {formatted_completion_template}
 {formatted_final_review}
@@ -947,6 +1104,7 @@ def get_competitive_landscape_prompt(company_name: str, language: str = "Japanes
     """)
 
     prompt = f"""
+{NO_THINKING_INSTRUCTION}
 **CRITICAL FOCUS:** This entire request is *exclusively* about the specific entity: {context_str} and its competitive landscape. Verify the identity of the company for all sourced information. Do not include unrelated entities.
 
 Detailed Competitive Analysis and Strategic Positioning of {company_name}
@@ -969,67 +1127,86 @@ Use **perfect Markdown tables**. Adhere strictly to grounding rules outlined bel
 
 {formatted_additional_instructions}
 
-### 1. Industry Overview & Trends
-    *   Describe the overall industry {company_name} operates in, aligning with '{industry or "N/A"}'. Include market size and growth rate estimates if verifiable data is available [SSY].
-    *   Identify key technological, regulatory, economic, and social trends impacting the industry, citing sources [SSY, SSZ].
-    *   Discuss the overall health and competitive intensity of the sector based on available grounded information [SSX, SSY].
+## 1. Industry Overview & Trends
+Describe the overall industry {company_name} operates in, aligning with '{industry or "N/A"}'. Include market size and growth rate estimates if verifiable data is available [SSY].
 
-### 2. Major Competitors Identification & Profiling
-    *   Identify primary global and key regional competitors of {company_name} based on {company_name}'s official statements [SSX] or grounded third-party reports [SSY]. Provide specific names.
-    *   Present competitor information in a **perfectly formatted Markdown table** where possible, clearly indicating source for each piece of data. Use '-' for missing data points only if needed for table structure. Verify data accuracy.
+Identify key technological, regulatory, economic, and social trends impacting the industry, citing sources [SSY, SSZ].
+
+Discuss the overall health and competitive intensity of the sector based on available grounded information [SSX, SSY].
+
+## 2. Major Competitors Identification & Profiling
+Identify primary global and key regional competitors of {company_name} based on {company_name}'s official statements [SSX] or grounded third-party reports [SSY]. Provide specific names.
+
+Present competitor information in a **perfectly formatted Markdown table** where possible, clearly indicating source for each piece of data. Use '-' for missing data points only if needed for table structure. Verify data accuracy.
+
         | Competitor Name | Primary Business Area(s) of Overlap with {company_name} | Estimated Market Share (Market, Year) | Key Geographic Overlap | Recent Key Moves (Date) | Source(s) |
         |-----------------|----------------------------------------------------------|---------------------------------------|------------------------|-------------------------|-----------|
         | Competitor A    | Describe relevant business [SSX]                         | X% (Specific Market, YYYY) [SSY]      | e.g., Japan, N. America [SSX] | Acquired Co. Z (YYYY-MM) [SSZ] | [SSX, SSY, SSZ] |
         | Competitor B    | Describe relevant business [SSX]                         | Y% (Specific Market, YYYY) [SSW]      | e.g., Global [SSX]     | Launched Product P (YYYY-MM) [SSV] | [SSX, SSW, SSV] |
         | Competitor C    | ...                                                      | -                                     | ...                    | ...                     |           |
-    *   For key competitors identified, briefly analyze their relative positioning versus {company_name} on dimensions like technology, product range, price point, or regional strength, based *only* on grounded data [SSX, SSY]. Note strategic weaknesses if explicitly mentioned in sources [SSZ].
 
-### 3. {company_name}'s Competitive Positioning
-    *   **Strengths:** Detail {company_name}'s key competitive strengths as stated in official documents or evidenced by data (e.g., strong R&D pipeline [SSX], market leadership in Segment Y [SSY]). Provide specific examples.
-    *   **Weaknesses:** Detail {company_name}'s potential competitive weaknesses or challenges acknowledged in official sources or implied by data (e.g., high cost structure compared to peers [SSX], dependence on a single market [SSY]).
-    *   **Opportunities:** Identify potential opportunities for {company_name} arising from industry trends (from Section 1) or competitor weaknesses (from Section 2), based on grounded analysis [SSX, SSY].
-    *   **Threats:** Identify potential threats to {company_name} arising from industry trends, competitor actions, or regulatory changes, based on grounded analysis [SSX, SSY].
-    *   **Competitive Advantages:** Summarize {company_name}'s key sources of sustainable competitive advantage as stated or evidenced (e.g., proprietary technology [SSX], brand loyalty metrics [SSY], scale economies [SSZ]).
+For key competitors identified, briefly analyze their relative positioning versus {company_name} on dimensions like technology, product range, price point, or regional strength, based *only* on grounded data [SSX, SSY]. Note strategic weaknesses if explicitly mentioned in sources [SSZ].
 
-### 4. {company_name}'s Detailed Profile (Competitive Lens)
-    *   **Products and Services:**
-        *   Describe {company_name}'s main products/services and product line-up details [SSX].
-        *   Discuss typical price range or positioning (e.g., premium, value) if stated [SSY].
-        *   Highlight key quality/differentiation points mentioned in reports [SSZ].
-        *   Comment on product development capabilities (e.g., frequency of new launches mentioned [SSX], R&D focus areas [SSY]).
-        *   Mention track record/case studies if highlighted (especially for B2B) [SSZ].
-    *   **Marketing and Sales Strategies:**
-        *   Describe {company_name}'s primary sales channels (e.g., direct, EC, distributors) [SSX].
-        *   Outline promotion strategies mentioned (advertising focus, SNS campaigns, etc.) [SSY].
-        *   Summarize reported brand image or perception for {company_name} [SSZ].
-        *   Note any mention of SEO/SNS utilization [SSX].
-        *   Describe the customer support system if detailed [SSY].
-    *   **Technological and Development Capabilities:**
-        *   List any claimed patents or unique technologies for {company_name} [SSX].
-        *   Report R&D expenditure trends (absolute and % of revenue if available) for {company_name} [SSY].
-        *   Identify key development bases or centers for {company_name} [SSZ].
-        *   Detail significant external collaborations (universities, research institutions, other companies) mentioned for {company_name} [SSX].
-    *   **Other Relevant Factors (if information available for {company_name}):**
-        *   Key aspects of Human Resources strategy mentioned (recruitment policy, training systems) [SSX].
-        *   Reported Customer Satisfaction (CSAT/NPS) scores or word-of-mouth evaluations [SSY].
-        *   Mention of external evaluations (awards, rankings) [SSZ].
-        *   Commentary on responsiveness to price revisions or industry trends [SSX].
+## 3. {company_name}'s Competitive Positioning
+**Strengths:** Detail {company_name}'s key competitive strengths as stated in official documents or evidenced by data (e.g., strong R&D pipeline [SSX], market leadership in Segment Y [SSY]). Provide specific examples.
 
-### 5. {company_name}'s Competitive Strategy
-    *   Describe {company_name}'s stated competitive strategy (e.g., focus on premium segment [SSX], R&D leadership [SSY], operational efficiency [SSZ]). Use direct quotes or paraphrased statements with citations.
-    *   Identify and describe {company_name}'s primary value discipline (e.g., operational excellence, customer intimacy, product leadership) if explicitly mentioned, with supporting evidence [SSX].
-    *   List specific initiatives or investments by {company_name} aimed at enhancing its competitive position (e.g., "Invested ¥XB in new R&D facility targeting Y technology [SSX]"). Include funding amounts and timelines if available [SSY].
-    *   Explain how {company_name} measures its competitive success according to official sources (e.g., target market share growth [SSX], customer satisfaction scores [SSY]).
+**Weaknesses:** Detail {company_name}'s potential competitive weaknesses or challenges acknowledged in official sources or implied by data (e.g., high cost structure compared to peers [SSX], dependence on a single market [SSY]).
 
-### 6. General Discussion
-    *   Provide a concluding single paragraph (300-500 words) that synthesizes the findings exclusively from Sections 1-5 regarding **{company_name}** and its competitive environment. Clearly link analytical statements using inline citations (e.g., "Given the industry trend towards X [SSY], {company_name}'s investment in Y technology [SSX] positions it well against Competitor A's recent moves [SSZ]..."). Evaluate the overall competitive strength and strategic effectiveness of {company_name}.
-    *   Structure the analysis logically by starting with an overall assessment of the competitive landscape and {company_name}'s place within it, discussing strengths/weaknesses/strategy effectiveness in light of competitors and trends, and concluding with strategic implications and potential threats/opportunities from a Japanese perspective.
-    *   Do not introduce new factual claims or unsourced analysis.
+**Opportunities:** Identify potential opportunities for {company_name} arising from industry trends (from Section 1) or competitor weaknesses (from Section 2), based on grounded analysis [SSX, SSY].
+
+**Threats:** Identify potential threats to {company_name} arising from industry trends, competitor actions, or regulatory changes, based on grounded analysis [SSX, SSY].
+
+**Competitive Advantages:** Summarize {company_name}'s key sources of sustainable competitive advantage as stated or evidenced (e.g., proprietary technology [SSX], brand loyalty metrics [SSY], scale economies [SSZ]).
+
+## 4. {company_name}'s Detailed Profile (Competitive Lens)
+**Products and Services:**
+* Describe {company_name}'s main products/services and product line-up details [SSX].
+* Discuss typical price range or positioning (e.g., premium, value) if stated [SSY].
+* Highlight key quality/differentiation points mentioned in reports [SSZ].
+* Comment on product development capabilities (e.g., frequency of new launches mentioned [SSX], R&D focus areas [SSY]).
+* Mention track record/case studies if highlighted (especially for B2B) [SSZ].
+
+**Marketing and Sales Strategies:**
+* Describe {company_name}'s primary sales channels (e.g., direct, EC, distributors) [SSX].
+* Outline promotion strategies mentioned (advertising focus, SNS campaigns, etc.) [SSY].
+* Summarize reported brand image or perception for {company_name} [SSZ].
+* Note any mention of SEO/SNS utilization [SSX].
+* Describe the customer support system if detailed [SSY].
+
+**Technological and Development Capabilities:**
+* List any claimed patents or unique technologies for {company_name} [SSX].
+* Report R&D expenditure trends (absolute and % of revenue if available) for {company_name} [SSY].
+* Identify key development bases or centers for {company_name} [SSZ].
+* Detail significant external collaborations (universities, research institutions, other companies) mentioned for {company_name} [SSX].
+
+**Other Relevant Factors (if information available for {company_name}):**
+* Key aspects of Human Resources strategy mentioned (recruitment policy, training systems) [SSX].
+* Reported Customer Satisfaction (CSAT/NPS) scores or word-of-mouth evaluations [SSY].
+* Mention of external evaluations (awards, rankings) [SSZ].
+* Commentary on responsiveness to price revisions or industry trends [SSX].
+
+## 5. {company_name}'s Competitive Strategy
+Describe {company_name}'s stated competitive strategy (e.g., focus on premium segment [SSX], R&D leadership [SSY], operational efficiency [SSZ]). Use direct quotes or paraphrased statements with citations.
+
+Identify and describe {company_name}'s primary value discipline (e.g., operational excellence, customer intimacy, product leadership) if explicitly mentioned, with supporting evidence [SSX].
+
+List specific initiatives or investments by {company_name} aimed at enhancing its competitive position (e.g., "Invested ¥XB in new R&D facility targeting Y technology [SSX]"). Include funding amounts and timelines if available [SSY].
+
+Explain how {company_name} measures its competitive success according to official sources (e.g., target market share growth [SSX], customer satisfaction scores [SSY]).
+
+## 6. General Discussion
+Provide a concluding single paragraph (300-500 words) that synthesizes the findings exclusively from Sections 1-5 regarding **{company_name}** and its competitive environment. Clearly link analytical statements using inline citations (e.g., "Given the industry trend towards X [SSY], {company_name}'s investment in Y technology [SSX] positions it well against Competitor A's recent moves [SSZ]..."). Evaluate the overall competitive strength and strategic effectiveness of {company_name}.
+
+Structure the analysis logically by starting with an overall assessment of the competitive landscape and {company_name}'s place within it, discussing strengths/weaknesses/strategy effectiveness in light of competitors and trends, and concluding with strategic implications and potential threats/opportunities from a Japanese perspective.
+
+Do not introduce new factual claims or unsourced analysis.
 
 Source and Accuracy Requirements:
-*   **Accuracy:** All information must be factual and current. Specify currency, dates, and reporting periods for any figures. Differentiate between {company_name}'s statements and grounded competitor/industry data. Silently omit unverified data after exhaustive search. Verify table data.
-*   **Traceability:** Every claim must include an inline citation ([SSX] for company data, [SSY], [SSZ], etc. for grounded competitor/industry data) corresponding to a grounding URL in the final Sources list.
-*   **Source Quality:** Use primarily {company_name}'s official sources. For competitor/industry data, use *only* information verifiable through provided Vertex AI grounding URLs (which might point to reputable third-party sources or competitor reports).
+**Accuracy:** All information must be factual and current. Specify currency, dates, and reporting periods for any figures. Differentiate between {company_name}'s statements and grounded competitor/industry data. Silently omit unverified data after exhaustive search. Verify table data.
+
+**Traceability:** Every claim must include an inline citation ([SSX] for company data, [SSY], [SSZ], etc. for grounded competitor/industry data) corresponding to a grounding URL in the final Sources list.
+
+**Source Quality:** Use primarily {company_name}'s official sources. For competitor/industry data, use *only* information verifiable through provided Vertex AI grounding URLs (which might point to reputable third-party sources or competitor reports).
 
 {formatted_completion_template}
 {formatted_final_review}
@@ -1057,13 +1234,14 @@ def get_management_strategy_prompt(company_name: str, language: str = "Japanese"
     formatted_section_document_instructions = get_section_specific_document_instructions("management_strategy")
 
     prompt = f"""
+{NO_THINKING_INSTRUCTION}
 **CRITICAL FOCUS:** This entire request is *exclusively* about the specific entity: {context_str}. Verify the identity of the company for all sourced information. Do not include unrelated entities.
 
 Comprehensive Analysis of {company_name}'s Management Strategy and Mid-Term Business Plan: Focus, Execution, and Progress
 
 Objective: To conduct an extensive analysis of **{company_name}**'s management strategy and mid-term business plan (MTP) by evaluating strategic pillars, execution effectiveness, progress against targets, and challenges. Focus on explaining *why* strategic choices were made and *how* progress is tracked using specific data with inline citations [SSX]. Focus strictly on {context_str}.
 
-Target Audience Context: This analysis is designed for a **Japanese company** needing deep strategic insights. Present all information with exact dates (e.g., MTP period FY2024-FY2026), reporting periods, financial figures in specified currency, and clear official source attributions [SSX]. {formatted_audience_reminder}
+Target Audience Context: This analysis is designed for a **Japanese company** needing deep strategic insights. Present all information with exact dates (e.g., MTP period FY2025-FY2027), reporting periods, financial figures in specified currency, and clear official source attributions [SSX]. {formatted_audience_reminder}
 
 {get_language_instruction(language)}
 
@@ -1078,35 +1256,45 @@ Conduct in-depth research from official sources for **{company_name}** (IR docum
 
 {formatted_additional_instructions}
 
-## 1. Management Strategy and Vision Alignment:
-    *   Outline **{company_name}**'s overall management strategy and analyze its alignment with the company's long-term vision or purpose statement. Include precise references (e.g., "as stated in the Vision 2030 document [SSX]") with inline citations [SSY].
-    *   Explain the core management philosophy, values, and strategic approach for {company_name} (e.g., "focus on organic growth through R&D [SSX]", "pursuit of operational excellence [SSY]") with examples, including specific dates or document references [SSZ].
-    *   Identify key strategic pillars or themes for {company_name} (e.g., "Digital Transformation", "Sustainability", "Global Expansion") for the upcoming 3-5 years, explaining the rationale and objectives for each based on official statements [SSX, SSY].
-    *   Describe any significant strategic shifts from previous plans for {company_name} (e.g., "pivot from hardware to software solutions announced in FY2022 [SSX]"), with supporting data and source references [SSY].
+## 1. Management Strategy and Vision Alignment
+Outline **{company_name}**'s overall management strategy and analyze its alignment with the company's long-term vision or purpose statement. Include precise references (e.g., "as stated in the Vision 2030 document [SSX]") with inline citations [SSY].
 
-## 2. Current Mid-Term Business Plan (MTP) Overview:
-    *   Identify the official name and exact time period of the current MTP for {company_name} (e.g., "Mid-Term Plan 'Growth Forward' (FY2024-FY2026)") with source references [SSX].
-    *   Detail the main objectives and specific quantitative targets (financial and non-financial) outlined in the MTP for {company_name}. Present **all** stated MTP targets/KPIs clearly in a **perfectly formatted Markdown table**, including KPI category, KPI name, target value (with currency/units), target year/period, and baseline values if available [SSX]. Verify data accuracy. Use '-' for missing data points only if needed for table structure.
+Explain the core management philosophy, values, and strategic approach for {company_name} (e.g., "focus on organic growth through R&D [SSX]", "pursuit of operational excellence [SSY]") with examples, including specific dates or document references [SSZ].
+
+Identify key strategic pillars or themes for {company_name} (e.g., "Digital Transformation", "Sustainability", "Global Expansion") for the upcoming 3-5 years, explaining the rationale and objectives for each based on official statements [SSX, SSY].
+
+Describe any significant strategic shifts from previous plans for {company_name} (e.g., "pivot from hardware to software solutions announced in FY2024 [SSX]"), with supporting data and source references [SSY].
+
+## 2. Current Mid-Term Business Plan (MTP) Overview
+Identify the official name and exact time period of the current MTP for {company_name} (e.g., "Mid-Term Plan 'Growth Forward' (FY2025-FY2027)") with source references [SSX].
+
+Detail the main objectives and specific quantitative targets (financial and non-financial) outlined in the MTP for {company_name}. Present **all** stated MTP targets/KPIs clearly in a **perfectly formatted Markdown table**, including KPI category, KPI name, target value (with currency/units), target year/period, and baseline values if available [SSX]. Verify data accuracy. Use '-' for missing data points only if needed for table structure.
+
         | KPI Category | KPI Name                     | Target Value (by FYZZZZ) | Baseline (FYXXXX) (if stated) | Source(s) |
         |--------------|------------------------------|--------------------------|-------------------------------|-----------|
         | Financial    | Revenue (JPY Billions)       | 500                      | 350                           | [SSX]     |
         | Financial    | Operating Margin (%)         | 10%                      | 7.5%                          | [SSX]     |
-        | Non-Fin      | CO2 Emissions Reduction (%)  | 30%                      | (vs FY2020)                   | [SSY]     |
+        | Non-Fin      | CO2 Emissions Reduction (%)  | 30%                      | (vs FY2023)                   | [SSY]     |
         | Non-Fin      | Customer Satisfaction Score  | 90                       | -                             | [SSX]     |
         | (Ensure ALL stated KPIs are listed...) | ... | ...                      | ...                           |           |
-    *   Discuss key differences or areas of emphasis compared to the previous MTP for {company_name}, supported by specific examples and inline citations [SSX].
 
-## 3. Strategic Focus Areas and Initiatives within MTP:
-    *   For each major strategic pillar identified in the MTP for {company_name}:
-        *   Detail the background and specific objectives of that pillar (e.g., "Pillar: Enhance Customer Experience through DX [SSX]"). Explain why it is a priority based on management commentary [SSY].
-        *   Describe the relevant market conditions or industry trends cited by the company as influencing this pillar [SSZ].
-        *   List specific initiatives, projects, or investments planned under this pillar (e.g., "Launch new CRM platform (Est. Cost: ¥Y Bn) [SSX]", "Invest ¥Z Bn in AI R&D [SSY]"). Include funding details, timelines, and expected outcomes if stated [SSZ].
-        *   Assess the potential impact and feasibility of these initiatives based on management commentary or available data [SSX, SSY].
+Discuss key differences or areas of emphasis compared to the previous MTP for {company_name}, supported by specific examples and inline citations [SSX].
 
-## 4. Execution, Progress Tracking, and Adaptation:
-    *   Identify key internal and external challenges or risks acknowledged by {company_name}'s management that affect MTP execution (e.g., "Supply chain disruptions [SSX]", "Talent acquisition difficulties [SSY]").
-    *   Describe the specific countermeasures or adjustments stated by {company_name} to address these challenges [SSZ].
-    *   Provide the latest available progress updates against the MTP targets for {company_name} (from Section 2 table). Present progress in a **perfectly formatted Markdown table** showing KPI, Target, and Latest Actual/Forecast (with date) [SSX]. Verify data accuracy. Use '-' for missing data points only if needed for table structure.
+## 3. Strategic Focus Areas and Initiatives within MTP
+For each major strategic pillar identified in the MTP for {company_name}:
+
+* Detail the background and specific objectives of that pillar (e.g., "Pillar: Enhance Customer Experience through DX [SSX]"). Explain why it is a priority based on management commentary [SSY].
+* Describe the relevant market conditions or industry trends cited by the company as influencing this pillar [SSZ].
+* List specific initiatives, projects, or investments planned under this pillar (e.g., "Launch new CRM platform (Est. Cost: ¥Y Bn) [SSX]", "Invest ¥Z Bn in AI R&D [SSY]"). Include funding details, timelines, and expected outcomes if stated [SSZ].
+* Assess the potential impact and feasibility of these initiatives based on management commentary or available data [SSX, SSY].
+
+## 4. Execution, Progress Tracking, and Adaptation
+Identify key internal and external challenges or risks acknowledged by {company_name}'s management that affect MTP execution (e.g., "Supply chain disruptions [SSX]", "Talent acquisition difficulties [SSY]").
+
+Describe the specific countermeasures or adjustments stated by {company_name} to address these challenges [SSZ].
+
+Provide the latest available progress updates against the MTP targets for {company_name} (from Section 2 table). Present progress in a **perfectly formatted Markdown table** showing KPI, Target, and Latest Actual/Forecast (with date) [SSX]. Verify data accuracy. Use '-' for missing data points only if needed for table structure.
+
         | KPI Name                     | Target (by FYZZZZ) | Latest Actual/Forecast (as of YYYY-MM-DD) | Progress Notes                                  | Source(s) |
         |------------------------------|--------------------|-------------------------------------------|-------------------------------------------------|-----------|
         | Revenue (JPY Billions)       | 500                | 410 (FYYYYY Actual)                       | On track / Slightly below forecast              | [SSX]     |
@@ -1114,17 +1302,22 @@ Conduct in-depth research from official sources for **{company_name}** (IR docum
         | CO2 Emissions Reduction (%)  | 30%                | 15% (Achieved YYYY)                       | Progressing as planned                          | [SSZ]     |
         | Customer Satisfaction Score  | 90                 | -                                         | -                                               |           |
         | (Track progress for ALL KPIs listed in Sec 2) | ... | ...                                    | ...                                             |           |
-    *   Highlight any significant strategic adjustments or MTP revisions announced by {company_name} in response to performance or external events (e.g., "Revised revenue target downwards in Q2 FYYYYY due to market slowdown [SSX]"), with inline citations [SSY].
 
-## 5. General Discussion:
-    *   Provide a single concluding paragraph (300-500 words) that synthesizes the key findings from Sections 1-4 regarding **{company_name}**. Clearly connect each analytical insight with inline citations (e.g., "The strategic focus on DX [SSX] aligns with the MTP targets [SSY], although execution progress shows challenges in margin improvement [SSZ]..."). Explain *why* progress is as reported, based on the analysis. Incorporate key quantitative points.
-    *   Structure the discussion logically by starting with an overall assessment of the strategy and MTP ambition, discussing execution effectiveness and progress against targets, highlighting key challenges and adaptations, and concluding with strategic takeaways and outlook relevant for a Japanese audience.
-    *   Do not introduce any new claims that are not derived from the previous sections and citations about **{company_name}**.
+Highlight any significant strategic adjustments or MTP revisions announced by {company_name} in response to performance or external events (e.g., "Revised revenue target downwards in Q2 FYYYYY due to market slowdown [SSX]"), with inline citations [SSY].
+
+## 5. General Discussion
+Provide a single concluding paragraph (300-500 words) that synthesizes the key findings from Sections 1-4 regarding **{company_name}**. Clearly connect each analytical insight with inline citations (e.g., "The strategic focus on DX [SSX] aligns with the MTP targets [SSY], although execution progress shows challenges in margin improvement [SSZ]..."). Explain *why* progress is as reported, based on the analysis. Incorporate key quantitative points.
+
+Structure the discussion logically by starting with an overall assessment of the strategy and MTP ambition, discussing execution effectiveness and progress against targets, highlighting key challenges and adaptations, and concluding with strategic takeaways and outlook relevant for a Japanese audience.
+
+Do not introduce any new claims that are not derived from the previous sections and citations about **{company_name}**.
 
 Source and Accuracy Requirements:
-*   **Accuracy:** Information must be factually correct and current for **{company_name}**. Specify currency and exact dates/periods for all data, targets, and progress reports. Silently omit unverified data after exhaustive search. Verify table data meticulously. Ensure all stated MTP KPIs are captured.
-*   **Traceability:** Every claim (in text, tables) must have an inline citation [SSX] linked to the final Sources list.
-*   **Source Quality:** Use primarily official company sources for **{company_name}** (MTP documents, IR presentations, Annual Reports, financial results briefings) with clear and verifiable references.
+**Accuracy:** Information must be factually correct and current for **{company_name}**. Specify currency and exact dates/periods for all data, targets, and progress reports. Silently omit unverified data after exhaustive search. Verify table data meticulously. Ensure all stated MTP KPIs are captured.
+
+**Traceability:** Every claim (in text, tables) must have an inline citation [SSX] linked to the final Sources list.
+
+**Source Quality:** Use primarily official company sources for **{company_name}** (MTP documents, IR presentations, Annual Reports, financial results briefings) with clear and verifiable references.
 
 {formatted_completion_template}
 {formatted_final_review}
@@ -1152,6 +1345,7 @@ def get_regulatory_prompt(company_name: str, language: str = "Japanese", ticker:
     formatted_section_document_instructions = get_section_specific_document_instructions("regulatory")
 
     prompt = f'''
+{NO_THINKING_INSTRUCTION}
 **CRITICAL FOCUS:** This entire request is *exclusively* about the specific entity: {context_str}. Verify the identity of the company for all sourced information. Do not include unrelated entities.
 
 In-Depth Analysis of the Regulatory Environment for {company_name}
@@ -1173,53 +1367,68 @@ Conduct deep research on **{company_name}**'s regulatory environment using offic
 
 {formatted_additional_instructions}
 
-### 1. Key Laws, Regulations, and Systems
-    *   **Major Applicable Laws/Regulations:** Identify major laws, ordinances, and ministerial regulations related to **{company_name}**'s industry ('{industry or "N/A"}') and operations (e.g., Pharmaceuticals and Medical Devices Act, Building Standards Act, Telecommunications Business Act, Financial Instruments and Exchange Act, sector-specific environmental laws) [SSX]. Specify jurisdiction (e.g., Japan, EU).
-    *   **Government/Agency Guidelines & Standards:** Mention key relevant guidelines or standards issued by government bodies or agencies (e.g., METI's Green Growth Strategy Guidelines, specific cybersecurity frameworks referenced) applicable to {company_name} [SSY].
-    *   **Potential Legal Amendments:** Discuss any significant upcoming or recent legal amendments mentioned by {company_name} or in grounded sources that could affect its operations (immediate to long term) [SSZ].
+## 1. Key Laws, Regulations, and Systems
+**Major Applicable Laws/Regulations:** Identify major laws, ordinances, and ministerial regulations related to **{company_name}**'s industry ('{industry or "N/A"}') and operations (e.g., Pharmaceuticals and Medical Devices Act, Building Standards Act, Telecommunications Business Act, Financial Instruments and Exchange Act, sector-specific environmental laws) [SSX]. Specify jurisdiction (e.g., Japan, EU).
 
-### 2. Licensing and Registration Systems
-    *   **Industry-Specific Permits/Licenses:** Detail any necessary industry-specific permits, licenses, notifications, or registrations required for **{company_name}**'s core business (e.g., manufacturing licenses, financial services licenses, broadcast licenses) [SSX].
-    *   **Acquisition & Renewal:** Comment on the perceived difficulty or cost of obtaining/maintaining these licenses for {company_name}, and any recent changes in renewal frequency or examination criteria, if discussed in sources [SSY].
+**Government/Agency Guidelines & Standards:** Mention key relevant guidelines or standards issued by government bodies or agencies (e.g., METI's Green Growth Strategy Guidelines, specific cybersecurity frameworks referenced) applicable to {company_name} [SSY].
 
-### 3. Supervisory Authorities and Industry Influence
-    *   **Supervisory Bodies:** Identify the main government bodies that supervise **{company_name}**'s industry or key activities (e.g., Financial Services Agency, Ministry of Health Labour and Welfare, Ministry of Internal Affairs and Communications, environmental agencies) [SSX].
-    *   **Industry Associations:** Name key industry associations {company_name} is part of that issue regulations, policies, or exert lobbying influence [SSY]. Discuss the influence of these associations on {company_name} if commented upon in sources [SSZ].
+**Potential Legal Amendments:** Discuss any significant upcoming or recent legal amendments mentioned by {company_name} or in grounded sources that could affect its operations (immediate to long term) [SSZ].
 
-### 4. Market and Business Model Impact
-    *   **Competitive Environment Impact:**
-        *   Analyze if regulations act as a barrier to new entrants in **{company_name}**'s market [SSX].
-        *   Discuss any changes in competitive structure due to deregulation or stricter enforcement mentioned in sources affecting {company_name} [SSY].
-        *   Note any competitive advantages derived by {company_name} from legislation (e.g., eligibility for specific subsidies or contracts) [SSZ].
-    *   **Business Model Impact:**
-        *   Detail key regulatory obligations for {company_name} (e.g., information disclosure, audit compliance, reporting requirements like ESG disclosures) [SSX].
-        *   Identify regulatory restrictions impacting {company_name}'s business model (e.g., price controls, advertising restrictions, data usage limitations) [SSY].
-        *   Discuss the costs and risks associated with compliance for {company_name} [SSZ].
+## 2. Licensing and Registration Systems
+**Industry-Specific Permits/Licenses:** Detail any necessary industry-specific permits, licenses, notifications, or registrations required for **{company_name}**'s core business (e.g., manufacturing licenses, financial services licenses, broadcast licenses) [SSX].
 
-### 5. International Context (if applicable)
-    *   **Comparison for Overseas Expansion:** If **{company_name}** operates internationally or plans expansion, highlight key differences in regulations compared to major overseas markets (e.g., EU regulations, US laws relevant to the industry) based on source information related to {company_name} [SSX].
-    *   **International Standards & Certifications:** Note {company_name}'s compliance status with international standards or certifications relevant to regulation (e.g., ISO standards, GDPR compliance statements, CE Mark for products) [SSY].
-    *   **Trade Regulations:** Mention regulations or customs clearance systems related to imports and exports relevant to {company_name}'s business, if discussed [SSZ].
+**Acquisition & Renewal:** Comment on the perceived difficulty or cost of obtaining/maintaining these licenses for {company_name}, and any recent changes in renewal frequency or examination criteria, if discussed in sources [SSY].
 
-### 6. Recent Policy Trends & Developments
-    *   **Latest Trends:** Summarize the latest trends in relevant policies, laws, and regulations mentioned by {company_name} or in grounded sources impacting it [SSX].
-    *   **Specific Government Measures:** Detail relevant government initiatives like green policies (subsidies, carbon pricing), DX-related legislation, or support programs impacting {company_name} [SSY].
-    *   **ESG-Related Mandates:** Discuss mandatory ESG reporting requirements (e.g., climate change compliance like TCFD, human capital disclosure) applicable to {company_name} [SSZ].
-    *   **Social Pressure & Activism:** Mention any significant impact from social pressure or citizen/environmental group activism pushing for stricter regulations or specific corporate actions related to {company_name}, if documented [SSX].
+## 3. Supervisory Authorities and Industry Influence
+**Supervisory Bodies:** Identify the main government bodies that supervise **{company_name}**'s industry or key activities (e.g., Financial Services Agency, Ministry of Health Labour and Welfare, Ministry of Internal Affairs and Communications, environmental agencies) [SSX].
 
-### 7. Compliance Approach & History
-    *   Detail **{company_name}**'s stated compliance approach and governance structure for regulatory matters (e.g., existence of compliance committees, specific policies, training programs) [SSX].
-    *   Identify any significant publicly reported regulatory enforcement actions, fines, or controversies related to **{company_name}**'s operations (not just digital) in the last 3-5 years. Specify dates, regulatory bodies involved, outcomes (including fine amounts with currency), and company responses or remedial actions taken [SSY, SSZ]. Present clearly.
+**Industry Associations:** Name key industry associations {company_name} is part of that issue regulations, policies, or exert lobbying influence [SSY]. Discuss the influence of these associations on {company_name} if commented upon in sources [SSZ].
 
-## 8. General Discussion:
-    *   Provide a concluding single paragraph (300-500 words) that synthesizes the findings from Sections 1-7 regarding **{company_name}**. Clearly articulate the primary regulatory pressures {company_name} faces and assess its apparent compliance posture and risk management effectiveness, using inline citations [SSX, SSY].
-    *   Structure the analysis by summarizing the key regulatory domains (general, industry-specific, international, emerging trends), evaluating the company's stated compliance strengths and any reported weaknesses or incidents, and concluding with an overall evaluation of regulatory risk tailored to a Japanese audience (considering factors like operational impact, reputational risk, potential fines, impact on strategy).
-    *   Do not introduce new factual claims beyond the provided analysis and citations about **{company_name}**.
+## 4. Market and Business Model Impact
+**Competitive Environment Impact:**
+* Analyze if regulations act as a barrier to new entrants in **{company_name}**'s market [SSX].
+* Discuss any changes in competitive structure due to deregulation or stricter enforcement mentioned in sources affecting {company_name} [SSY].
+* Note any competitive advantages derived by {company_name} from legislation (e.g., eligibility for specific subsidies or contracts) [SSZ].
+
+**Business Model Impact:**
+* Detail key regulatory obligations for {company_name} (e.g., information disclosure, audit compliance, reporting requirements like ESG disclosures) [SSX].
+* Identify regulatory restrictions impacting {company_name}'s business model (e.g., price controls, advertising restrictions, data usage limitations) [SSY].
+* Discuss the costs and risks associated with compliance for {company_name} [SSZ].
+
+## 5. International Context (if applicable)
+**Comparison for Overseas Expansion:** If **{company_name}** operates internationally or plans expansion, highlight key differences in regulations compared to major overseas markets (e.g., EU regulations, US laws relevant to the industry) based on source information related to {company_name} [SSX].
+
+**International Standards & Certifications:** Note {company_name}'s compliance status with international standards or certifications relevant to regulation (e.g., ISO standards, GDPR compliance statements, CE Mark for products) [SSY].
+
+**Trade Regulations:** Mention regulations or customs clearance systems related to imports and exports relevant to {company_name}'s business, if discussed [SSZ].
+
+## 6. Recent Policy Trends & Developments
+**Latest Trends:** Summarize the latest trends in relevant policies, laws, and regulations mentioned by {company_name} or in grounded sources impacting it [SSX].
+
+**Specific Government Measures:** Detail relevant government initiatives like green policies (subsidies, carbon pricing), DX-related legislation, or support programs impacting {company_name} [SSY].
+
+**ESG-Related Mandates:** Discuss mandatory ESG reporting requirements (e.g., climate change compliance like TCFD, human capital disclosure) applicable to {company_name} [SSZ].
+
+**Social Pressure & Activism:** Mention any significant impact from social pressure or citizen/environmental group activism pushing for stricter regulations or specific corporate actions related to {company_name}, if documented [SSX].
+
+## 7. Compliance Approach & History
+Detail **{company_name}**'s stated compliance approach and governance structure for regulatory matters (e.g., existence of compliance committees, specific policies, training programs) [SSX].
+
+Identify any significant publicly reported regulatory enforcement actions, fines, or controversies related to **{company_name}**'s operations (not just digital) in the last 3-5 years. Specify dates, regulatory bodies involved, outcomes (including fine amounts with currency), and company responses or remedial actions taken [SSY, SSZ]. Present clearly.
+
+## 8. General Discussion
+Provide a concluding single paragraph (300-500 words) that synthesizes the findings from Sections 1-7 regarding **{company_name}**. Clearly articulate the primary regulatory pressures {company_name} faces and assess its apparent compliance posture and risk management effectiveness, using inline citations [SSX, SSY].
+
+Structure the analysis by summarizing the key regulatory domains (general, industry-specific, international, emerging trends), evaluating the company's stated compliance strengths and any reported weaknesses or incidents, and concluding with an overall evaluation of regulatory risk tailored to a Japanese audience (considering factors like operational impact, reputational risk, potential fines, impact on strategy).
+
+Do not introduce new factual claims beyond the provided analysis and citations about **{company_name}**.
 
 Source and Accuracy Requirements:
-*   **Accuracy:** All regulatory details must be current and verifiable for **{company_name}**. Include specific law names, dates, certification details, and currency information for fines. Silently omit unverified data after exhaustive search.
-*   **Traceability:** Each statement must have an inline citation [SSX] corresponding to the final Sources list.
-*   **Source Quality:** Use official company disclosures for **{company_name}** (Annual Reports, Sustainability/ESG Reports, Governance sections, specific policy documents if available), government regulatory websites, and reputable news sources only if grounded by Vertex AI Search results.
+**Accuracy:** All regulatory details must be current and verifiable for **{company_name}**. Include specific law names, dates, certification details, and currency information for fines. Silently omit unverified data after exhaustive search.
+
+**Traceability:** Each statement must have an inline citation [SSX] corresponding to the final Sources list.
+
+**Source Quality:** Use official company disclosures for **{company_name}** (Annual Reports, Sustainability/ESG Reports, Governance sections, specific policy documents if available), government regulatory websites, and reputable news sources only if grounded by Vertex AI Search results.
 
 {formatted_completion_template}
 {formatted_final_review}
@@ -1247,6 +1456,7 @@ def get_crisis_prompt(company_name: str, language: str = "Japanese", ticker: Opt
     formatted_section_document_instructions = get_section_specific_document_instructions("crisis")
 
     prompt = f'''
+{NO_THINKING_INSTRUCTION}
 **CRITICAL FOCUS:** This entire request is *exclusively* about the specific entity: {context_str}. Verify the identity of the company for all sourced information. Do not include unrelated entities.
 
 In-Depth Analysis of {company_name}'s Digital Crisis Management and Business Continuity
@@ -1269,7 +1479,7 @@ Conduct thorough research on **{company_name}**'s crisis management and business
 {formatted_additional_instructions}
 
 ## 1. Crisis Management and Business Continuity:
-    *   **Handling of Past Digital Crises (Last 5 Years):** Describe significant publicly reported digital crises impacting **{company_name}**. Use bullet points for each incident:
+    *   **Handling of Past Digital Crises (Last 5 Years, 2021-2025):** Describe significant publicly reported digital crises impacting **{company_name}**. Use bullet points for each incident:
         *   **Incident Type & Date:** (e.g., Ransomware attack, approx. YYYY-MM [SSX]; Major system outage, YYYY-MM-DD [SSY]; Data breach discovered YYYY-MM [SSZ]).
         *   **Impact Details:** Describe affected systems/services, nature of data compromised (if applicable), estimated number of users/customers affected, duration of outage, and any reported financial impact (e.g., estimated recovery costs of $X million [SSX], fine of €Y million [SSY]). Be specific and cite sources.
         *   **Company Response:** Detail **{company_name}**'s public statements, communication strategy, remedial actions taken (e.g., systems restored by [Date] [SSX], external cybersecurity experts engaged [SSY], free credit monitoring offered [SSZ]), and any reported changes to security practices or governance resulting from the incident [SSW].
@@ -1319,6 +1529,7 @@ def get_digital_transformation_prompt(company_name: str, language: str = "Japane
     formatted_section_document_instructions = get_section_specific_document_instructions("digital_transformation")
 
     prompt = f"""
+{NO_THINKING_INSTRUCTION}
 **CRITICAL FOCUS:** This entire request is *exclusively* about the specific entity: {context_str}. Verify the identity of the company for all sourced information. Do not include unrelated entities.
 
 In-Depth Analysis of {company_name}'s Digital Transformation (DX) Strategy and Execution
@@ -1340,14 +1551,18 @@ Conduct detailed research on **{company_name}**'s DX journey using official sour
 
 {formatted_additional_instructions}
 
-## 1. DX Strategy Overview:
-    *   Outline **{company_name}**'s overall digital transformation vision and strategic goals (e.g., "To become a data-driven organization by YYYY [SSX]", "Enhance customer experience through personalized digital services [SSY]"). Use verbatim statements where possible, with precise references and inline citations [SSZ].
-    *   **Analyze the Rationale:** Based on management commentary or strategic documents for {company_name}, explain the *reasons* behind its DX strategy (e.g., "What business problems is DX aiming to solve? How does it link to competitive pressures or the overall corporate vision?") [SSX, SSY].
-    *   Identify the key strategic priorities or pillars of {company_name}'s DX strategy (e.g., "Cloud Migration", "AI & Analytics adoption", "Workforce Digital Upskilling", "Supply Chain Optimization") with specific details and start/end dates if part of a formal plan [SSX].
-    *   List major DX initiatives or projects for {company_name} currently underway or recently completed under these pillars. Include specific objectives and target outcomes for each initiative if stated (e.g., "Project Phoenix: Cloud migration targeting X% cost reduction by YYYY [SSX]") [SSY].
+## 1. DX Strategy Overview
+Outline **{company_name}**'s overall digital transformation vision and strategic goals (e.g., "To become a data-driven organization by YYYY [SSX]", "Enhance customer experience through personalized digital services [SSY]"). Use verbatim statements where possible, with precise references and inline citations [SSZ].
 
-## 2. DX Investments Analysis (Last 3 Fiscal Years):
-    *   Analyze **{company_name}**'s investments specifically allocated to DX, if disclosed. Provide detailed breakdowns by initiative or area (e.g., cloud infrastructure, AI development, cybersecurity enhancements related to DX) if available, potentially in a **perfectly formatted Markdown table**. Include specific investment amounts (with currency), funding sources (if mentioned), timelines, and reporting periods, with inline citations [SSX]. Verify data accuracy. Use '-' for missing data points only if needed for table structure.
+**Analyze the Rationale:** Based on management commentary or strategic documents for {company_name}, explain the *reasons* behind its DX strategy (e.g., "What business problems is DX aiming to solve? How does it link to competitive pressures or the overall corporate vision?") [SSX, SSY].
+
+Identify the key strategic priorities or pillars of {company_name}'s DX strategy (e.g., "Cloud Migration", "AI & Analytics adoption", "Workforce Digital Upskilling", "Supply Chain Optimization") with specific details and start/end dates if part of a formal plan [SSX].
+
+List major DX initiatives or projects for {company_name} currently underway or recently completed under these pillars. Include specific objectives and target outcomes for each initiative if stated (e.g., "Project Phoenix: Cloud migration targeting X% cost reduction by YYYY [SSX]") [SSY].
+
+## 2. DX Investments Analysis (Last 3 Fiscal Years)
+Analyze **{company_name}**'s investments specifically allocated to DX, if disclosed. Provide detailed breakdowns by initiative or area (e.g., cloud infrastructure, AI development, cybersecurity enhancements related to DX) if available, potentially in a **perfectly formatted Markdown table**. Include specific investment amounts (with currency), funding sources (if mentioned), timelines, and reporting periods, with inline citations [SSX]. Verify data accuracy. Use '-' for missing data points only if needed for table structure.
+
         | DX Investment Area        | FYXXXX (JPY M) | FYYYYY (JPY M) | FYZZZZ (JPY M) | Notes / Key Projects        | Source(s) |
         |---------------------------|----------------|----------------|----------------|---------------------------|-----------|
         | Cloud Migration           |                |                |                | e.g., AWS/Azure spend     | [SSX]     |
@@ -1355,30 +1570,56 @@ Conduct detailed research on **{company_name}**'s DX journey using official sour
         | Process Automation (RPA)  | -              |                |                |                           | [SSZ]     |
         | Customer Facing Platforms |                |                |                | e.g., New CRM/App dev     | [SSW]     |
         | Total DX Spend (if stated)|                |                |                |                           | [SSV]     |
-    *   Describe overall investment trends in DX for {company_name} over the last 3 years (e.g., increasing significantly [SSX], stable focus on specific areas [SSY]) with supporting data and analysis of the investment allocation strategy [SSZ].
 
-## 3. DX Case Studies & Implementation Examples:
-    *   Provide detailed descriptions of 2-3 specific DX implementation examples or case studies highlighted by **{company_name}**. For each example, describe:
-        *   **Initiative Name & Goal:** (e.g., "Smart Factory Project [SSX]", "Goal: Improve OEE by 15%")
-        *   **Technology Involved:** (e.g., IoT sensors, predictive analytics platform, cloud data lake) [SSY]
-        *   **Implementation Details:** (e.g., Phased rollout across 3 plants starting YYYY [SSX], Partnership with Vendor V [SSZ])
-        *   **Measurable Outcomes & Business Impact:** Quantify results where possible (e.g., "Achieved 12% improvement in OEE in Plant A [SSX]", "Reduced manual reporting time by X hours/week [SSY]", "Enabled new service generating ¥Z million in first year [SSZ]"). Specify currency and reporting period. Use only company-reported outcomes for {company_name}.
-        *   **Rationale for Highlighting:** Explain why this example was likely chosen by {company_name} (e.g., flagship project demonstrating AI capability [SSX], successful cross-functional collaboration [SSY]).
+Describe overall investment trends in DX for {company_name} over the last 3 years (2023-2025) (e.g., increasing significantly [SSX], stable focus on specific areas [SSY]) with supporting data and analysis of the investment allocation strategy [SSZ].
 
-## 4. Regulatory Environment, Compliance, and Crisis Management (Integration with DX):
-    *   Briefly summarize the key regulatory trends previously identified (in the Regulatory prompt context, if available) that directly impact **{company_name}**'s DX strategy (e.g., data localization requirements affecting cloud choices [SSX], security standards for connected devices [SSY]). Cite specific laws or standards and sources.
-    *   Describe how **{company_name}** states it integrates compliance considerations into its DX efforts (e.g., "Privacy by Design principles applied in new app development [SSX]", "Mandatory security reviews for all new cloud services [SSY]"). Provide specific examples from official sources [SSZ].
-    *   Mention how digital crisis management and business continuity considerations are addressed within the context of major DX initiatives at **{company_name}** (e.g., "Disaster recovery plans tested for new cloud platform [SSX]", "Redundancy built into critical digital infrastructure [SSY]"). Cite official examples where available [SSZ].
+## 3. DX Case Studies & Implementation Examples
+Provide detailed descriptions of 2-3 specific DX implementation examples or case studies highlighted by **{company_name}**. For each example, describe:
 
-## 5. General Discussion:
-    *   Provide a concluding single paragraph (300-500 words) that synthesizes the findings from Sections 1-4 regarding **{company_name}**. Assess the coherence, ambition, rationale, and execution progress of {company_name}'s DX strategy. Explicitly link data points and examples using inline citations (e.g., "The strategic rationale focusing on customer experience [SSX] drives the significant investment in CRM [SSY], and early results from case studies [SSZ] suggest potential, though scaling remains a challenge...").
-    *   Structure your discussion logically—start with an overview of the DX strategy's clarity and focus, evaluate the investment commitment and implementation effectiveness based on examples, integrate the handling of compliance and risk, and conclude with an assessment of the DX maturity and outlook relevant for a Japanese audience.
-    *   Do not introduce new facts outside of the presented analysis and citations about **{company_name}**.
+* **Initiative Name & Goal:** (e.g., "Smart Factory Project [SSX]", "Goal: Improve OEE by 15%")
+* **Timeline & Scale:** When was it started/completed? What was the scope (e.g., pilot in one location vs. enterprise-wide)? [SSY]
+* **Technologies Used:** Specific technologies implemented (e.g., IoT sensors, specific AI/ML platforms, RPA tools, cloud services) [SSZ]
+* **Investment:** Cost figures if disclosed (with currency and timeframe) [SSX]
+* **Outcomes/Results:** Quantifiable results if reported (e.g., "30% reduction in processing time [SSY]", "¥X million in cost savings [SSZ]", "Y% improvement in customer satisfaction [SSW]")
+* **Challenges:** Any implementation challenges mentioned and how they were addressed [SSX]
+* **Next Steps:** Any stated plans for expansion or enhancement of the initiative [SSY]
+
+## 4. DX Organizational Framework & Partnerships
+Detail **{company_name}**'s organizational structure for DX implementation. Mention:
+
+* Leadership: DX governance structure and key leadership roles (e.g., Chief Digital Officer, DX Committee) [SSX]
+* Internal Capabilities: Digital skills development programs, internal centers of excellence, or DX-focused teams [SSY]
+* External Partnerships: Key technology partners, consultancies, or academic collaborations supporting DX initiatives [SSZ]
+* Change Management: How {company_name} is addressing cultural and organizational changes needed for DX success [SSX]
+
+## 5. DX Risk Management & Compliance
+Describe how **{company_name}** addresses digital risks and compliance considerations within its DX strategy:
+
+* Cybersecurity: How security is integrated into DX initiatives [SSX]
+* Regulatory Compliance: How regulatory requirements are addressed in DX (e.g., data privacy, industry-specific regulations) [SSY]
+* Technology Risk: How technology obsolescence, vendor lock-in, or integration challenges are managed [SSZ]
+* Ethical Considerations: Any ethical frameworks for AI/data usage mentioned [SSX]
+
+## 6. DX Performance Metrics & Success Indicators
+Outline how **{company_name}** measures the success of its DX initiatives:
+
+* KPIs & Metrics: Specific performance indicators used to measure DX success (e.g., digital revenue percentage, automation rates, customer engagement metrics) [SSX]
+* Measurement Framework: Any formal assessment frameworks or maturity models used [SSY]
+* ROI Calculation: How the company calculates or reports return on DX investments [SSZ]
+
+## 7. General Discussion
+Provide a concluding single paragraph (300-500 words) synthesizing the findings from Sections 1-6 regarding **{company_name}**'s digital transformation journey. Assess the apparent maturity, strategic cohesion, and effectiveness of its DX approach. Use inline citations explicitly (e.g., "The clear alignment between stated DX goals [SSX] and investment patterns [SSY] suggests a well-coordinated approach, though the limited quantifiable outcomes [SSZ] raise questions about measurement rigor...").
+
+Structure the discussion logically, starting with an overall assessment of the DX strategy and vision, highlighting strengths in approach and execution, noting apparent gaps or challenges, and concluding with an evaluation of how well the DX initiatives appear to be supporting the company's broader business objectives, with consideration of what this means for a Japanese audience considering partnership, investment, or competitive response.
+
+Do not introduce any new claims not supported by the previous analysis and citations about **{company_name}**.
 
 Source and Accuracy Requirements:
-*   **Accuracy:** All data must be current and verified for **{company_name}**. Specify currency and reporting period for every monetary value, investment figure, and outcome metric. Silently omit unverified data after exhaustive search. Verify table data meticulously.
-*   **Traceability:** Every fact must include an inline citation [SSX] that corresponds to a source in the final Sources list.
-*   **Source Quality:** Prioritize official company disclosures for **{company_name}** (Annual Reports, IR presentations, specific DX reports/webpages) and reputable research *only if grounded* by Vertex AI Search results.
+**Accuracy:** All DX details, investment figures (with currency), implementation timelines, and performance metrics must be current and verifiable against grounded sources for **{company_name}**. Silently omit unverified data after exhaustive search. Verify table data meticulously.
+
+**Traceability:** Every factual claim must include an inline citation [SSX] linked to a source in the final Sources list.
+
+**Source Quality:** Prioritize official company disclosures for **{company_name}** (DX strategy documents, digital initiative press releases, technology investment sections in annual reports). Use reputable technology analyst reports or case studies *only* if grounded by Vertex AI Search results.
 
 {formatted_completion_template}
 {formatted_final_review}
@@ -1424,7 +1665,7 @@ def get_business_structure_prompt(company_name: str, language: str = "Japanese",
             7. **Margin & Share Calculations:** If documents only provide absolute values, calculate percentages (showing your work); if only percentages are given, attempt to derive absolute values from reported totals.
 
     *   **Check for Alternative Metrics:** If standard revenue segmentation is not the primary method used by {company_name} (e.g., in MTP targets, core reporting for industries like insurance), look for and report the segmentation based on the key metric the company uses (e.g., premiums in-force, assets under management). Clearly define the metric used based on the source.
-    *   **Partial Data Handling:** If only partial data (e.g., 1-2 years instead of 3) is available for segments/geography after exhaustive search for {company_name}, present the available data clearly in the tables, noting the timeframe covered (e.g., in the text analyzing the table: "Data for FY2022-2023 shows..." [SSX]). Do not state unavailability. Proceed with analysis based on the available timeframe.
+    *   **Partial Data Handling:** If only partial data (e.g., 1-2 years instead of 3) is available for segments/geography after exhaustive search for {company_name}, present the available data clearly in the tables, noting the timeframe covered (e.g., in the text analyzing the table: "Data for FY2024-2025 shows..." [SSX]). Do not state unavailability. Proceed with analysis based on the available timeframe.
 
     *   **Organizational Chart Analysis (NEW & CRITICAL):**
         *   If provided documents include organizational charts or structural diagrams:
@@ -1447,6 +1688,7 @@ def get_business_structure_prompt(company_name: str, language: str = "Japanese",
     """)
 
     prompt = f"""
+{NO_THINKING_INSTRUCTION}
 **CRITICAL FOCUS:** This entire request is *exclusively* about the specific entity: {context_str}. Verify the identity of the company for all sourced information. Do not include unrelated entities.
 
 In-Depth Analysis of {company_name}'s Business Structure, Geographic Footprint, Ownership, and Strategic Vision Linkages
@@ -1536,7 +1778,7 @@ Perform a critical analysis using official sources for **{company_name}** (Annua
         * Plans for specific business segment growth/rationalization or geographic expansion [SSY].
         * Comments linking the corporate structure (including subsidiaries or group reorganization) to strategy execution [SSZ].
         * Comments on ownership structure or major shareholder relations (if any and if public) [SSW].
-    *   Each quote must have its source cited immediately after it (e.g., "(Source: Integrated Report 2023, p. 5)") and an inline citation [SSX] confirming the quote's origin.
+    *   Each quote must have its source cited immediately after it (e.g., "(Source: Integrated Report 2024, p. 5)") and an inline citation [SSX] confirming the quote's origin.
     *   Where possible, explicitly connect a quote to a specific finding in Sections 1-4 (e.g., "Reflecting the growth in the Asian market shown in Section 2 [SSY], the CEO stated, '...' [SSX]").
 
 ## 6. General Discussion:
@@ -1580,13 +1822,14 @@ def get_vision_prompt(company_name: str, language: str = "Japanese", ticker: Opt
     formatted_section_document_instructions = get_section_specific_document_instructions("vision")
 
     prompt = f"""
+{NO_THINKING_INSTRUCTION}
 **CRITICAL FOCUS:** This entire request is *exclusively* about the specific entity: {context_str}. Verify the identity of the company for all sourced information. Do not include unrelated entities.
 
 Analysis of {company_name}'s Strategic Vision and Purpose
 
 Objective: To provide a detailed analysis of **{company_name}**'s officially stated vision, mission, or purpose. Break down its core components (pillars, strategic themes), explain how progress is measured using specific KPIs mentioned in relation to the vision, and assess stakeholder focus. Include exact quotes, dates, and reference all information using inline citations [SSX]. Use the latest available sources. Focus strictly on {context_str}.
 
-Target Audience Context: This analysis is for a **Japanese company** assessing strategic alignment and long-term direction. Present precise information with clear source references and detailed explanations (e.g., "as per the Integrated Report 2023, p.12, [SSX]") {formatted_audience_reminder}
+Target Audience Context: This analysis is for a **Japanese company** assessing strategic alignment and long-term direction. Present precise information with clear source references and detailed explanations (e.g., "as per the Integrated Report 2024, p.12, [SSX]") {formatted_audience_reminder}
 
 {get_language_instruction(language)}
 
@@ -1601,27 +1844,35 @@ Conduct in-depth research using official sources for **{company_name}** such as 
 
 {formatted_additional_instructions}
 
-## 1. Company Vision and Strategy Elements:
-    *   **Vision/Purpose/Mission Statement:** Present **{company_name}**'s official statement(s) verbatim (e.g., "Our Purpose is to...") with an inline citation [SSX] identifying the source document and date (e.g., Integrated Report 2023 [SSX]). Explain its core message and intended timescale (e.g., Vision 2030) [SSY].
-    *   **Strategic Vision Components/Pillars:** List and explain the key strategic themes, values, or pillars that underpin the vision for {company_name} (e.g., "Innovation", "Sustainability", "Customer Centricity") as defined in official documents [SSX]. Provide brief definitions or explanations for each pillar based on the source [SSY].
-    *   **Vision Measures / KPIs:** Identify specific measures or Key Performance Indicators (KPIs) that **{company_name}** explicitly links to tracking progress towards its overall vision or purpose (these might be high-level MTP targets or specific ESG goals mentioned in the vision context). Present these in a list or **perfectly formatted Markdown table** if multiple and verifiable, including the KPI name, the target (if specified, with date/period), and how it relates to the vision pillar [SSX]. Verify data. Use '-' for missing data points only if needed for table structure.
-        | Vision Pillar      | Linked KPI                    | Target/Goal (if specified)     | Source(s) |
-        |--------------------|-------------------------------|--------------------------------|-----------|
-        | Sustainability     | Scope 1+2 CO2 Reduction       | 50% reduction by 2030 vs 2020  | [SSX]     |
-        | Innovation         | % Revenue from New Products   | -                              | [SSY]     |
-        | Customer Centricity| Net Promoter Score (NPS)      | > 50 by 2027                   | [SSZ]     |
-        | ...                | ...                           | ...                            |           |
-    *   ***Stakeholder Focus:*** Analyze how the vision statement and its supporting pillars for {company_name} explicitly address or prioritize key stakeholder groups (e.g., customers, employees, shareholders, society, environment) based on the language used in official communications [SSX]. Provide specific examples or quotes [SSY].
+## 1. Company Vision and Strategy Elements
+**Vision/Purpose/Mission Statement:** Present **{company_name}**'s official statement(s) verbatim (e.g., "Our Purpose is to...") with an inline citation [SSX] identifying the source document and date (e.g., Integrated Report 2024 [SSX]). Explain its core message and intended timescale (e.g., Vision 2030) [SSY].
 
-## 2. General Discussion:
-    *   Provide a concluding single paragraph (300-500 words) that synthesizes the information in Section 1 regarding **{company_name}**. Evaluate the clarity, ambition, distinctiveness, and internal coherence of the stated vision and its components. Use inline citations to link back to specific elements (e.g., "The vision's focus on sustainability [SSX] is clearly measured by the CO2 reduction KPI [SSY], demonstrating commitment... However, the link between the 'Innovation' pillar and specific KPIs appears less defined [SSZ] based on available public disclosures..."). Incorporate key quantitative points if available.
-    *   Structure the analysis logically—start with an overall summary of the vision's core message, discuss the strength and measurability of its components and stakeholder considerations, and finally evaluate its potential effectiveness in guiding strategy and its relevance for a Japanese audience assessing long-term direction.
-    *   Do not introduce new claims beyond the synthesized findings from Section 1 and citations about **{company_name}**.
+**Strategic Vision Components/Pillars:** List and explain the key strategic themes, values, or pillars that underpin the vision for {company_name} (e.g., "Innovation", "Sustainability", "Customer Centricity") as defined in official documents [SSX]. Provide brief definitions or explanations for each pillar based on the source [SSY].
+
+**Vision Measures / KPIs:** Identify specific measures or Key Performance Indicators (KPIs) that **{company_name}** explicitly links to tracking progress towards its overall vision or purpose (these might be high-level MTP targets or specific ESG goals mentioned in the vision context). Present these in a list or **perfectly formatted Markdown table** if multiple and verifiable, including the KPI name, the target (if specified, with date/period), and how it relates to the vision pillar [SSX]. Verify data. Use '-' for missing data points only if needed for table structure.
+
+| Vision Pillar      | Linked KPI                    | Target/Goal (if specified)     | Source(s) |
+|--------------------|-------------------------------|--------------------------------|-----------|
+| Sustainability     | Scope 1+2 CO2 Reduction       | 50% reduction by 2030 vs 2023  | [SSX]     |
+| Innovation         | % Revenue from New Products   | -                              | [SSY]     |
+| Customer Centricity| Net Promoter Score (NPS)      | > 50 by 2027                   | [SSZ]     |
+| ...                | ...                           | ...                            |           |
+
+**Stakeholder Focus:** Analyze how the vision statement and its supporting pillars for {company_name} explicitly address or prioritize key stakeholder groups (e.g., customers, employees, shareholders, society, environment) based on the language used in official communications [SSX]. Provide specific examples or quotes [SSY].
+
+## 2. General Discussion
+Provide a concluding single paragraph (300-500 words) that synthesizes the information in Section 1 regarding **{company_name}**. Evaluate the clarity, ambition, distinctiveness, and internal coherence of the stated vision and its components. Use inline citations to link back to specific elements (e.g., "The vision's focus on sustainability [SSX] is clearly measured by the CO2 reduction KPI [SSY], demonstrating commitment... However, the link between the 'Innovation' pillar and specific KPIs appears less defined [SSZ] based on available public disclosures..."). Incorporate key quantitative points if available.
+
+Structure the analysis logically—start with an overall summary of the vision's core message, discuss the strength and measurability of its components and stakeholder considerations, and finally evaluate its potential effectiveness in guiding strategy and its relevance for a Japanese audience assessing long-term direction.
+
+Do not introduce new claims beyond the synthesized findings from Section 1 and citations about **{company_name}**.
 
 Source and Accuracy Requirements:
-*   **Accuracy:** Ensure all statements, quotes, and KPIs for **{company_name}** are accurately represented from official sources and current as of the cited document date. Specify currency/units for KPIs where applicable. Silently omit unverified data after exhaustive search. Verify table data.
-*   **Traceability:** Every claim must have an inline citation [SSX] that corresponds to a source in the final Sources list.
-*   **Source Quality:** Use primarily official company documents for **{company_name}** (Integrated Reports, dedicated Vision/Purpose web pages, MTP overviews, Sustainability Reports) and well-documented press releases related to strategy announcements.
+**Accuracy:** Ensure all statements, quotes, and KPIs for **{company_name}** are accurately represented from official sources and current as of the cited document date. Specify currency/units for KPIs where applicable. Silently omit unverified data after exhaustive search. Verify table data.
+
+**Traceability:** Every claim must have an inline citation [SSX] that corresponds to a source in the final Sources list.
+
+**Source Quality:** Use primarily official company documents for **{company_name}** (Integrated Reports, dedicated Vision/Purpose web pages, MTP overviews, Sustainability Reports) and well-documented press releases related to strategy announcements.
 
 {formatted_completion_template}
 {formatted_final_review}
@@ -1649,6 +1900,7 @@ def get_management_message_prompt(company_name: str, language: str = "Japanese",
     formatted_section_document_instructions = get_section_specific_document_instructions("management_message")
 
     prompt = f"""
+{NO_THINKING_INSTRUCTION}
 **CRITICAL FOCUS:** This entire request is *exclusively* about the specific entity: {context_str}. Verify the identity of the company and the speaker for all sourced information. Do not include unrelated entities.
 
 Detailed Leadership Strategic Outlook (Verbatim Quotes) for {company_name}
@@ -1670,50 +1922,64 @@ Conduct focused research on recent (last 1-2 years) official communications from
 
 {formatted_additional_instructions}
 
-## 1. Leadership Strategic Outlook (Verbatim Quotes):
+## 1. Leadership Strategic Outlook (Verbatim Quotes)
 
 ### [CEO Full Name], [CEO Title] (of {company_name})
-*   Provide a brief 1-2 sentence summary of the key strategic themes reflected in the CEO's quotes below (e.g., Emphasis on digital transformation and global markets during FY2023 reporting [SSX]). Cite the source range.
-*   **Quote 1 (Theme: e.g., Long-Term Vision):**
-    > "..." [SSX]
-    (Source: [Document/Event Name], [Date], [Page/Timestamp if available])
-*   **Quote 2 (Theme: e.g., Key Challenge Response):**
-    > "..." [SSY]
-    (Source: [Document/Event Name], [Date], [Page/Timestamp if available])
-*   **Quote 3 (Theme: e.g., Growth Strategy):**
-    > "..." [SSZ]
-    (Source: [Document/Event Name], [Date], [Page/Timestamp if available])
-*   **Quote 4 (Theme: e.g., Market Outlook):**
-    > "..." [SSW]
-    (Source: [Document/Event Name], [Date], [Page/Timestamp if available])
-*   *(Add more quotes if particularly insightful and verifiable, aim for 3-5 key strategic quotes)*
+Provide a brief 1-2 sentence summary of the key strategic themes reflected in the CEO's quotes below (e.g., Emphasis on digital transformation and global markets during FY2024 reporting [SSX]). Cite the source range.
+
+**Quote 1 (Theme: e.g., Long-Term Vision):**
+> "..." [SSX]
+(Source: [Document/Event Name], [Date], [Page/Timestamp if available])
+
+**Quote 2 (Theme: e.g., Key Challenge Response):**
+> "..." [SSY]
+(Source: [Document/Event Name], [Date], [Page/Timestamp if available])
+
+**Quote 3 (Theme: e.g., Growth Strategy):**
+> "..." [SSZ]
+(Source: [Document/Event Name], [Date], [Page/Timestamp if available])
+
+**Quote 4 (Theme: e.g., Market Outlook):**
+> "..." [SSW]
+(Source: [Document/Event Name], [Date], [Page/Timestamp if available])
+
+*(Add more quotes if particularly insightful and verifiable, aim for 3-5 key strategic quotes)*
 
 ### [Chairman Full Name], [Chairman Title] (of {company_name}, if distinct from CEO and provides verifiable strategic commentary)
-*   Provide a brief 1-2 sentence summary of key themes in the Chairman's quotes (include date range) [SSX].
-*   **Quote 1 (Theme: e.g., Governance/Sustainability):**
-    > "..." [SSV]
-    (Source: [Document/Event Name], [Date], [Page/Timestamp if available])
-*   **Quote 2 (Theme: e.g., Long-term Perspective):**
-    > "..." [SSU]
-    (Source: [Document/Event Name], [Date], [Page/Timestamp if available])
-*   *(Add more quotes if available, verifiable, and strategically relevant, aim for 2-3)*
+Provide a brief 1-2 sentence summary of key themes in the Chairman's quotes (include date range) [SSX].
+
+**Quote 1 (Theme: e.g., Governance/Sustainability):**
+> "..." [SSV]
+(Source: [Document/Event Name], [Date], [Page/Timestamp if available])
+
+**Quote 2 (Theme: e.g., Long-term Perspective):**
+> "..." [SSU]
+(Source: [Document/Event Name], [Date], [Page/Timestamp if available])
+
+*(Add more quotes if available, verifiable, and strategically relevant, aim for 2-3)*
 
 ### [Other Key Executive Name], [Title] (e.g., CFO, CSO, CTO, COO, BU Head of {company_name} - Include significant, verifiable strategic quotes)
-*   Provide a brief 1-2 sentence summary of their strategic focus area reflected in verifiable quotes [SSX].
-*   **Quote 1 (Theme: e.g., Financial Strategy / Tech Roadmap / Operational Excellence):**
-    > "..." [SST]
-    (Source: [Document/Event Name], [Date], [Page/Timestamp if available])
-*   *(Include 1-3 highly relevant, verifiable quotes per key executive if applicable)*
+Provide a brief 1-2 sentence summary of their strategic focus area reflected in verifiable quotes [SSX].
 
-## 2. General Discussion:
-    *   Provide a concluding single paragraph (300-500 words) synthesizing the key strategic messages, priorities, and tone conveyed *exclusively* through the collected, verifiable quotes from **{company_name}**'s leadership in Section 1. Identify recurring themes, potential shifts in focus, or areas where different executives provide complementary perspectives. Use inline citations to link back to specific quotes or speakers (e.g., "The CEO's emphasis on digital innovation [SSX, SSZ] aligns with the CTO's focus on AI investment [SST], suggesting a unified direction... However, the Chairman's cautionary note on governance [SSV] highlights potential execution risks..."). Consider potential DX opportunities or challenges implied by the leadership messages [SSX].
-    *   Structure your analysis logically: summarize the dominant strategic narrative from leadership based on the quotes, highlight any nuances or potential tensions between messages, and conclude with an assessment of the clarity and consistency of the strategic communication relevant for a Japanese audience interpreting leadership signals.
-    *   Do not introduce any new factual claims or analysis beyond what is directly supported by the quotes provided and cited about **{company_name}**.
+**Quote 1 (Theme: e.g., Financial Strategy / Tech Roadmap / Operational Excellence):**
+> "..." [SST]
+(Source: [Document/Event Name], [Date], [Page/Timestamp if available])
+
+*(Include 1-3 highly relevant, verifiable quotes per key executive if applicable)*
+
+## 2. General Discussion
+Provide a concluding single paragraph (300-500 words) synthesizing the key strategic messages, priorities, and tone conveyed *exclusively* through the collected, verifiable quotes from **{company_name}**'s leadership in Section 1. Identify recurring themes, potential shifts in focus, or areas where different executives provide complementary perspectives. Use inline citations to link back to specific quotes or speakers (e.g., "The CEO's emphasis on digital innovation [SSX, SSZ] aligns with the CTO's focus on AI investment [SST], suggesting a unified direction... However, the Chairman's cautionary note on governance [SSV] highlights potential execution risks..."). Consider potential DX opportunities or challenges implied by the leadership messages [SSX].
+
+Structure your analysis logically: summarize the dominant strategic narrative from leadership based on the quotes, highlight any nuances or potential tensions between messages, and conclude with an assessment of the clarity and consistency of the strategic communication relevant for a Japanese audience interpreting leadership signals.
+
+Do not introduce any new factual claims or analysis beyond what is directly supported by the quotes provided and cited about **{company_name}**.
 
 Source and Accuracy Requirements:
-*   **Accuracy:** Every quote must be verbatim, correctly attributed to the speaker (with title) from **{company_name}**, and include precise source details (document/event, date, page/time if possible). Silently omit quotes if not verifiable after exhaustive search.
-*   **Traceability:** Each quote's origin must be confirmed by an inline citation [SSX] corresponding to the final Sources list.
-*   **Source Quality:** Use only official communications from **{company_name}** (Annual/Integrated reports, earnings call transcripts, official IR presentations/webcasts, company-published interviews). Avoid secondary reporting of quotes unless the secondary source itself is grounded.
+**Accuracy:** Every quote must be verbatim, correctly attributed to the speaker (with title) from **{company_name}**, and include precise source details (document/event, date, page/time if possible). Silently omit quotes if not verifiable after exhaustive search.
+
+**Traceability:** Each quote's origin must be confirmed by an inline citation [SSX] corresponding to the final Sources list.
+
+**Source Quality:** Use only official communications from **{company_name}** (Annual/Integrated reports, earnings call transcripts, official IR presentations/webcasts, company-published interviews). Avoid secondary reporting of quotes unless the secondary source itself is grounded.
 
 {formatted_completion_template}
 {formatted_final_review}
@@ -1740,60 +2006,55 @@ def get_account_strategy_prompt(company_name: str, language: str = "Japanese", t
     # --- Format Standard Instruction Blocks ---
     # (Ensure these are correctly defined and accessible)
     formatted_additional_instructions = ADDITIONAL_REFINED_INSTRUCTIONS.format(company_name=company_name, ticker=ticker or "N/A", industry=industry or "N/A")
-    # Add language-specific heading instructions for Japanese section titles
     formatted_language_headings = get_language_specific_headings(language) if 'get_language_specific_headings' in globals() else ""
-    # MODIFIED: Enhance research depth specifically for this prompt context
     formatted_research_depth = RESEARCH_DEPTH_INSTRUCTION.format(company_name=company_name) + textwrap.dedent(f"""\
 
-        *   **CRITICAL - Account Strategy Context:** When applying these research instructions for the Account Strategy Prompt, remember the goal is to gather intelligence *on* **{company_name}** specifically *to inform strategy FOR* **{context_company_name}**. Prioritize information revealing needs, plans, challenges, and organizational details relevant to potential {context_company_name} solutions.
-        *   **Document Prioritization for Internal Context:** CRITICALLY, prioritize and deeply integrate information found within the **provided documents** [DOCX] as the primary source for internal strategy, plans, specific challenges, personnel, and relationship history. Supplement with the latest official primary web sources [SSX] for public facts (revenue, official structure, etc.) and broader market context. Use the correct citation type based on origin. If conflicts arise, prioritize latest official provided document for internal strategy/plans, and latest verifiable public web source for public facts.
+**CRITICAL - Account Strategy Context:** When applying these research instructions for the Account Strategy Prompt, remember the goal is to gather intelligence *on* **{company_name}** specifically *to inform strategy FOR* **{context_company_name}**. Prioritize information revealing needs, plans, challenges, and organizational details relevant to potential {context_company_name} solutions.
+**Document Prioritization for Internal Context:** CRITICALLY, prioritize and deeply integrate information found within the **provided documents** [DOCX] as the primary source for internal strategy, plans, specific challenges, personnel, and relationship history. Supplement with the latest official primary web sources [SSX] for public facts (revenue, official structure, etc.) and broader market context. Use the correct citation type based on origin. If conflicts arise, prioritize latest official provided document for internal strategy/plans, and latest verifiable public web source for public facts.
         
-        *   **Document Processing Framework (NEW & CRITICAL):**
-            *   **Document Intelligence Gathering:**
-                1. **Needs & Pain Points Extraction:** In ALL provided documents, specifically identify and extract:
-                   * Explicitly stated business challenges or pain points (e.g., "struggling with legacy systems", "facing compliance challenges")
-                   * Implied needs based on described limitations or issues (e.g., descriptions of manual processes suggesting automation needs)
-                   * Technology gaps mentioned or inferred (e.g., "current system cannot handle X")
-                   * Strategic initiatives requiring technology enablement (e.g., "expansion plans into X market")
+**Document Processing Framework (NEW & CRITICAL):**
+**Document Intelligence Gathering:**
+1. **Needs & Pain Points Extraction:** In ALL provided documents, specifically identify and extract:
+    * Explicitly stated business challenges or pain points (e.g., "struggling with legacy systems", "facing compliance challenges")
+    * Implied needs based on described limitations or issues (e.g., descriptions of manual processes suggesting automation needs)
+    * Technology gaps mentioned or inferred (e.g., "current system cannot handle X")
+    * Strategic initiatives requiring technology enablement (e.g., "expansion plans into X market")
+        
+2. **Decision-Maker Identification:** From documents containing organizational information, extract:
+    * Key stakeholder names and titles
+    * Their apparent roles in technology/business decisions
+    * Reporting relationships and potential influence paths
+    * Any mentions of decision-making processes or approval chains
                 
-                2. **Decision-Maker Identification:** From documents containing organizational information, extract:
-                   * Key stakeholder names and titles
-                   * Their apparent roles in technology/business decisions
-                   * Reporting relationships and potential influence paths
-                   * Any mentions of decision-making processes or approval chains
+3. **Cultural Insight Extraction:** Note any information about:
+* Stated company values or priorities
+    * Decision-making style (e.g., consensus-driven, top-down)
+    * Innovation appetite or technology adoption approach
+    * Vendor relationship preferences (e.g., preferred partnership models)
                 
-                3. **Cultural Insight Extraction:** Note any information about:
-                   * Stated company values or priorities
-                   * Decision-making style (e.g., consensus-driven, top-down)
-                   * Innovation appetite or technology adoption approach
-                   * Vendor relationship preferences (e.g., preferred partnership models)
-                
-                4. **Technical Environment Mapping:** From technical documents, extract:
-                   * Current systems and platforms 
-                   * Integration points and architectures
-                   * Existing vendor relationships
-                   * Technical standards or constraints
-            
-            *   **Document-Web Synthesis Methodology:**
-                1. **Core-Shell Framework:** Think of document insights as the "core" (internal, detailed, often more current) with web-grounded data as the "shell" (official, public, broader context).
-                2. **Needs-Validation Pattern:** When a need/challenge is identified in documents, look for public validation or context in web sources (e.g., if documents mention security concerns, look for public security initiatives or regulatory factors).
-                3. **Public-Private Triangulation:** Use public statements (web) to validate and contextualize private communications (documents) and vice versa.
-                4. **Progressive Detail Method:** Start with high-level public information (company structure, strategy) then progressively add document-derived detailed insights (specific pain points, technical details).
-                5. **Temporal Context Integration:** Pay close attention to dates in both documents and web sources to create a coherent timeline of the company's challenges, initiatives, and priorities.
+4. **Technical Environment Mapping:** From technical documents, extract:
+    * Current systems and platforms 
+    * Integration points and architectures
+    * Existing vendor relationships
+    * Technical standards or constraints
+]
+**Document-Web Synthesis Methodology:**
+1. **Core-Shell Framework:** Think of document insights as the "core" (internal, detailed, often more current) with web-grounded data as the "shell" (official, public, broader context).
+2. **Needs-Validation Pattern:** When a need/challenge is identified in documents, look for public validation or context in web sources (e.g., if documents mention security concerns, look for public security initiatives or regulatory factors).
+3. **Public-Private Triangulation:** Use public statements (web) to validate and contextualize private communications (documents) and vice versa.
+4. **Progressive Detail Method:** Start with high-level public information (company structure, strategy) then progressively add document-derived detailed insights (specific pain points, technical details).
+5. **Temporal Context Integration:** Pay close attention to dates in both documents and web sources to create a coherent timeline of the company's challenges, initiatives, and priorities.
     """)
-    formatted_final_review_base = FINAL_REVIEW_INSTRUCTION.format(company_name=company_name) # Base for later enhancement
-    formatted_completion_base = COMPLETION_INSTRUCTION_TEMPLATE.format(company_name=company_name) # Base for later enhancement
-    # MODIFIED: Clarify SSX-only nature of final list
+    formatted_final_review_base = FINAL_REVIEW_INSTRUCTION.format(company_name=company_name)
+    formatted_completion_base = COMPLETION_INSTRUCTION_TEMPLATE.format(company_name=company_name)
     formatted_final_source_list = FINAL_SOURCE_LIST_INSTRUCTIONS_TEMPLATE.format(language=language) + textwrap.dedent("""\
 
         **Note for Account Strategy:** This final "Sources" list is *exclusively* for the web grounding URLs cited as `[SSX]`. Document citations `[DOCX, reference]` are inline only and **must not** be included here.
     """)
     formatted_base_formatting = BASE_FORMATTING_INSTRUCTIONS.format(language=language)
-    # MODIFIED: Ensure audience context is applied to NESIC's perspective
     formatted_audience_reminder = AUDIENCE_CONTEXT_REMINDER.format(language=language) + f" Ensure recommendations are actionable for **{context_company_name}**."
 
     # --- Format Document Analysis Instruction ---
-    # MODIFIED: Slight wording tweak for synthesis context
     formatted_document_analysis = DOCUMENT_ANALYSIS_INSTRUCTION.format(company_name=company_name, context_company_name=context_company_name, language=language).replace(
         "analysis and the resulting Account Strategy **MUST** deeply integrate insights extracted",
         "analysis and the resulting Account Strategy **MUST** deeply synthesize and integrate insights extracted"
@@ -1802,8 +2063,7 @@ def get_account_strategy_prompt(company_name: str, language: str = "Japanese", t
         "Prioritize document insights for internal context, but synthesize with web grounding for a complete picture."
     )
 
-    # --- Dynamically create the enhanced completion and review checks ---
-    # Using properly formatted string literals to handle nested quotes correctly
+    # --- Enhanced completion and review checks ---
     enhanced_completion_checks = textwrap.dedent(f'''
         7. Information from provided documents is integrated and cited correctly using `[DOCX, reference]` format.
         8. Executive Summary (Section 0) and {context_company_name} Risks (Section 11) are included and complete.
@@ -1812,27 +2072,25 @@ def get_account_strategy_prompt(company_name: str, language: str = "Japanese", t
 
     enhanced_review_checks = textwrap.dedent(f'''
 
-        *   **Document Insight Integration & Implications:**
-            *   Insights AND their implications for {context_company_name} from provided documents are incorporated throughout, especially in Sections 2, 4, 5, 6, 7, 9, 12.
-            *   Document citations `[DOCX, reference]` are used correctly and consistently.
-            *   Web grounding `[SSX]` is used appropriately to supplement/verify public facts and provide context.
-            *   **Synthesis:** The analysis clearly integrates insights from BOTH document and web sources where relevant.
-        *   **{context_company_name} Perspective & Value Proposition:**
-            *   The analysis, recommendations, and language consistently reflect the viewpoint, objectives, and value proposition of {context_company_name}.
-            *   Opportunities clearly link {company_name}'s needs (from web/docs) to specific {context_company_name} capabilities AND differentiators.
-        *   **Actionability & Completeness:**
-            *   Executive Summary (Sec 0) provides a clear overview based on the synthesized analysis.
-            *   Engagement Plan (Sec 8) includes actionable next steps for {context_company_name} and considers potential hurdles.
-            *   {context_company_name} Risks (Sec 11) are identified with mitigation strategies relevant to {context_company_name}.
-            *   Final Recommendation (Sec 12) is clear and synthesizes key findings, opportunities, and risks **from {context_company_name}'s perspective**.
+        **Document Insight Integration & Implications:**
+        Insights AND their implications for {context_company_name} from provided documents are incorporated throughout, especially in Sections 2, 4, 5, 6, 7, 9, 12.
+        Document citations `[DOCX, reference]` are used correctly and consistently.
+        Web grounding `[SSX]` is used appropriately to supplement/verify public facts and provide context.
+        The analysis clearly integrates insights from BOTH document and web sources where relevant.
+        **{context_company_name} Perspective & Value Proposition:**
+        The analysis, recommendations, and language consistently reflect the viewpoint, objectives, and value proposition of {context_company_name}.
+        Opportunities clearly link {company_name}'s needs (from web/docs) to specific {context_company_name} capabilities AND differentiators.
+        **Actionability & Completeness:**
+        Executive Summary (Sec 0) provides a clear overview based on the synthesized analysis.
+        Engagement Plan (Sec 8) includes actionable next steps for {context_company_name} and considers potential hurdles.
+        {context_company_name} Risks (Sec 11) are identified with mitigation strategies relevant to {context_company_name}.
+        Final Recommendation (Sec 12) is clear and synthesizes key findings, opportunities, and risks **from {context_company_name}'s perspective**.
     ''')
 
-
     # --- Assemble the Final Prompt ---
-    # MODIFIED: Added persona clarification and mandatory dual-source emphasis
     prompt = f"""
 {persona} Your goal is to create an actionable plan for {context_company_name}.
-
+{NO_THINKING_INSTRUCTION}
 **CRITICAL FOCUS:** This entire request is *exclusively* about creating a strategic account plan FOR **{context_company_name}** targeting the specific entity: {context_str}. Verify the identity of **{company_name}** for all sourced information. Avoid unrelated entities.
 
 # MODIFIED: Emphasize dual source mandate
@@ -1855,180 +2113,181 @@ Target Audience Context: {formatted_audience_reminder} Recommendations must be a
 --- Core Instructions & Constraints ---
 
 Research & Analysis Requirements:
-*   # MODIFIED: Explicit dual source synthesis and prioritization logic
-    **Dual Source Synthesis (MANDATORY):** Deeply analyze and synthesize information from BOTH provided documents (`[DOCX]`) AND web grounding (`[SSX]`).
-        *   Prioritize documents for internal strategy, specific plans/timelines, internal challenges/pain points, organizational details, and relationship history.
-        *   Use latest verifiable public web grounding for official public facts (e.g., reported revenue, CEO name, major public announcements) and broader market/industry context.
-        *   If conflicting information exists: Prioritize the **latest official provided document** for internal strategy/plans specific to {company_name}. Prioritize the **latest verifiable public web grounding source** for publicly stated facts. Note significant conflicts impacting strategy.
-*   **Accurate & Distinct Citation (MANDATORY):** Every factual claim about {company_name} MUST have the correct inline citation: `[SSX]` for web grounding, `[DOCX, reference]` for provided documents.
-*   **Exhaustive Review:** Perform thorough review of *all* provided document content (text, tables, visuals) and conduct exhaustive web searches before silently omitting unverified data.
-*   **{context_company_name} Perspective (CRITICAL):** Frame ALL analysis and recommendations from **{context_company_name}'s** viewpoint – "How can WE ({context_company_name}) uniquely help {company_name} achieve their goals and overcome their challenges using OUR capabilities and strengths?".
-*   **Actionable & Strategic Output:** Focus on extracting insights that inform concrete strategic engagement possibilities, value propositions, and potential risks for {context_company_name}.
-*   **Perfect Formatting:** Adhere strictly to Markdown rules (esp. tables). Verify data accuracy. Use '-' sparingly in tables only if data is confirmed absent in source and needed for structure.
+**Dual Source Synthesis (MANDATORY):** Deeply analyze and synthesize information from BOTH provided documents (`[DOCX]`) AND web grounding (`[SSX]`).
+* Prioritize documents for internal strategy, specific plans/timelines, internal challenges/pain points, organizational details, and relationship history.
+* Use latest verifiable public web grounding for official public facts (e.g., reported revenue, CEO name, major public announcements) and broader market/industry context.
+* If conflicting information exists: Prioritize the **latest official provided document** for internal strategy/plans specific to {company_name}. Prioritize the **latest verifiable public web grounding source** for publicly stated facts. Note significant conflicts impacting strategy.
+
+**Accurate & Distinct Citation (MANDATORY):** Every factual claim about {company_name} MUST have the correct inline citation: `[SSX]` for web grounding, `[DOCX, reference]` for provided documents.
+
+**Exhaustive Review:** Perform thorough review of *all* provided document content (text, tables, visuals) and conduct exhaustive web searches before silently omitting unverified data.
+
+**{context_company_name} Perspective (CRITICAL):** Frame ALL analysis and recommendations from **{context_company_name}'s** viewpoint – "How can WE ({context_company_name}) uniquely help {company_name} achieve their goals and overcome their challenges using OUR capabilities and strengths?".
+
+**Actionable & Strategic Output:** Focus on extracting insights that inform concrete strategic engagement possibilities, value propositions, and potential risks for {context_company_name}.
+
+**Perfect Formatting:** Adhere strictly to Markdown rules (esp. tables). Verify data accuracy. Use '-' sparingly in tables only if data is confirmed absent in source and needed for structure.
 
 {formatted_document_analysis}
-{HANDLING_MISSING_INFO_INSTRUCTION} # Includes check for alternate language sites
-{formatted_research_depth} # Includes document prioritization logic
+{HANDLING_MISSING_INFO_INSTRUCTION}
+{formatted_research_depth}
 {SPECIFICITY_INSTRUCTION}
-{INLINE_CITATION_INSTRUCTION} # Reminds of the two citation types
-{ANALYSIS_SYNTHESIS_INSTRUCTION} # Synthesize from BOTH sources
-{formatted_language_headings} # Adds Japanese section titles when language is Japanese
-
-{formatted_additional_instructions} # Includes single-entity focus, markdown rules etc.
+{INLINE_CITATION_INSTRUCTION}
+{ANALYSIS_SYNTHESIS_INSTRUCTION}
+{formatted_language_headings}
+{formatted_additional_instructions}
 
 --- Account Strategy Plan Structure ---
 
 ## 0. Executive Summary (for {context_company_name})
-    *   Provide a concise (1-2 paragraph) overview of the 3-year strategy for engaging {company_name}, **based on synthesis of DOCX and SSX insights**.
-    *   Highlight the top 2-3 strategic opportunities identified for {context_company_name}.
-    *   Summarize the core value proposition {context_company_name} offers to {company_name}.
-    *   Briefly mention the overall ambition level (e.g., expand footprint, become strategic partner).
-    *   Cite key supporting data points [DOCX / SSX].
+Provide a concise (1-2 paragraph) overview of the 3-year strategy for engaging {company_name}, **based on synthesis of DOCX and SSX insights**.
+Highlight the top 2-3 strategic opportunities identified for {context_company_name}.
+Summarize the core value proposition {context_company_name} offers to {company_name}.
+Briefly mention the overall ambition level (e.g., expand footprint, become strategic partner).
+Cite key supporting data points [DOCX / SSX].
 
 ## 1. Target Customer Profile ({company_name})
-    *   Company Name: {company_name} [SSX or DOCX]
-    *   Ticker: {ticker or "N/A"} [SSX or DOCX]
-    *   Industry: {industry or "N/A"} [SSX or DOCX]
-    *   Headquarters Address: [Full Registered HQ Address] [SSX or DOCX]
-    *   Current CEO: [Full Name and Title] [SSX or DOCX - Verify latest]
-    *   Key Business Summary: Summarize main operations, markets, recent performance highlights, and overall business trajectory based on latest reports and documents [SSX, DOCX].
-    *   Approximate Employee Range/Number: [Most recent figure with date] [SSX or DOCX]
-    *   Reported Relationship with {context_company_name}: Summarize any existing relationship, past projects, or engagement level *if explicitly mentioned and verifiable* in provided documents or grounded sources [DOCX, SSY]. Otherwise, state "No verifiable relationship history found".
+Company Name: {company_name} [SSX or DOCX]
+Ticker: {ticker or "N/A"} [SSX or DOCX]
+Industry: {industry or "N/A"} [SSX or DOCX]
+Headquarters Address: [Full Registered HQ Address] [SSX or DOCX]
+Current CEO: [Full Name and Title] [SSX or DOCX - Verify latest]
+Key Business Summary: Summarize main operations, markets, recent performance highlights, and overall business trajectory based on latest reports and documents [SSX, DOCX].
+Approximate Employee Range/Number: [Most recent figure with date] [SSX or DOCX]
+Reported Relationship with {context_company_name}: Summarize any existing relationship, past projects, or engagement level *if explicitly mentioned and verifiable* in provided documents or grounded sources [DOCX, SSY]. Otherwise, state "No verifiable relationship history found".
 
 ## 2. Key Insights from Provided Documents & Implications for {context_company_name}
-    *   **Document Analysis Framework (NEW & CRITICAL):**
-        *   **Document Inventory & Classification:** First create a detailed inventory of all provided documents:
-            | Doc ID | Document Title/Type | Date/Version | Content Summary | Key Sections/Data | Significance Rating |
-            |--------|---------------------|--------------|-----------------|-------------------|---------------------|
-            | DOC1   | [Title, e.g., "FY24 Internal Strategy PPT"] | [Date] | Summary of main topics | Lists key sections | High/Medium/Low |
-            | DOC2   | [Title, e.g., "Org Chart PDF"] | [Date] | Summary of main topics | Lists key sections | High/Medium/Low |
+Document Analysis Framework (NEW & CRITICAL):
+Document Inventory & Classification: First create a detailed inventory of all provided documents:
+    | Doc ID | Document Title/Type | Date/Version | Content Summary | Key Sections/Data | Significance Rating |
+    |--------|---------------------|--------------|-----------------|-------------------|---------------------|
+    | DOC1   | [Title, e.g., "FY24 Internal Strategy PPT"] | [Date] | Summary of main topics | Lists key sections | High/Medium/Low |
+    | DOC2   | [Title, e.g., "Org Chart PDF"] | [Date] | Summary of main topics | Lists key sections | High/Medium/Low |
             
-        *   **Document Cross-Referencing:** Identify relationships between documents (e.g., "Strategy deck DOC1 refers to IT roadmap detailed in DOC3")
-        *   **Document Temporal Analysis:** Arrange documents chronologically to establish a timeline of events, decisions, and plans
+Document Cross-Referencing: Identify relationships between documents (e.g., "Strategy deck DOC1 refers to IT roadmap detailed in DOC3")
+Document Temporal Analysis: Arrange documents chronologically to establish a timeline of events, decisions, and plans
     
-    *   **Major Strategic Themes & Priorities (from Docs):** 
-        *   Extract and synthesize core strategic goals, transformation efforts, and investment areas stated within documents [DOCX, reference]. 
-        *   Look for both explicit statements (e.g., "Our FY25 priority is X") and implicit priorities (recurring themes, topics with detailed metrics/timelines).
-        *   Note any shifts in priorities across documents of different dates.
-        *   **Implication for {context_company_name}:** [Analyze what these themes mean for potential {context_company_name} engagement, mapping to NESIC capabilities].
+Major Strategic Themes & Priorities (from Docs): 
+Extract and synthesize core strategic goals, transformation efforts, and investment areas stated within documents [DOCX, reference]. 
+Look for both explicit statements (e.g., "Our FY25 priority is X") and implicit priorities (recurring themes, topics with detailed metrics/timelines).
+Note any shifts in priorities across documents of different dates.
+Implication for {context_company_name}: [Analyze what these themes mean for potential {context_company_name} engagement, mapping to NESIC capabilities].
     
-    *   **Recent Activities & Projects (from Docs):** 
-        *   Identify significant ongoing/planned projects/initiatives mentioned [DOCX, reference], including:
-            * Project names and descriptions
-            * Current status and timeline
-            * Budget information (if available)
-            * Key stakeholders involved
-            * Success metrics or expected outcomes
-            * Challenges or roadblocks mentioned
-        *   **Implication for {context_company_name}:** [Identify specific, immediate opportunities or areas for {context_company_name} to align with or enhance these projects].
+Recent Activities & Projects (from Docs): 
+Identify significant ongoing/planned projects/initiatives mentioned [DOCX, reference], including:
+Project names and descriptions
+Current status and timeline
+Budget information (if available)
+Key stakeholders involved
+Success metrics or expected outcomes
+Challenges or roadblocks mentioned
+Implication for {context_company_name}: [Identify specific, immediate opportunities or areas for {context_company_name} to align with or enhance these projects].
     
-    *   **Organizational Nuances & Key Stakeholders (from Docs):** 
-        *   Detail relevant organizational structure insights:
-            * Team names and their functions
-            * Key individuals and their roles
-            * Reporting relationships and governance models
-            * Decision-making processes mentioned
-            * Any recent or planned organizational changes
-        *   [DOCX, reference] 
-        *   **Implication for {context_company_name}:** [Identify key contacts, decision-makers, influence paths, and potential relationship mapping targets].
-    
-    *   **Explicitly Stated Needs / Pain Points (from Docs):** 
-        *   Create a comprehensive catalog of challenges, requirements, and gaps directly articulated in documents:
-            * Technical challenges (e.g., legacy systems, integration issues)
-            * Operational pain points (e.g., manual processes, efficiency gaps)
-            * Strategic challenges (e.g., competitive pressures, market positioning)
-            * Compliance/regulatory requirements
-            * Resource constraints (talent, budget, time)
-        *   [DOCX, reference] 
-        *   **Implication for {context_company_name}:** [Pinpoint where {context_company_name}'s specific solutions directly address these expressed needs, with quantifiable benefits where possible].
+Organizational Nuances & Key Stakeholders (from Docs): 
+Detail relevant organizational structure insights:
+Team names and their functions
+Key individuals and their roles
+Reporting relationships and governance models
+Decision-making processes mentioned
+Any recent or planned organizational changes
+[DOCX, reference] 
+**Implication for {context_company_name}:** [Identify key contacts, decision-makers, influence paths, and potential relationship mapping targets].
+
+**Explicitly Stated Needs / Pain Points (from Docs):** 
+Create a comprehensive catalog of challenges, requirements, and gaps directly articulated in documents:
+Technical challenges (e.g., legacy systems, integration issues)
+Operational pain points (e.g., manual processes, efficiency gaps)
+Strategic challenges (e.g., competitive pressures, market positioning)
+Compliance/regulatory requirements
+Resource constraints (talent, budget, time)
+[DOCX, reference] 
+**Implication for {context_company_name}:** [Pinpoint where {context_company_name}'s specific solutions directly address these expressed needs, with quantifiable benefits where possible].
 
 ## 3. Financial Health & Investment Capacity ({company_name})
-    *   Present Revenue, Net Income (Parent), and Operating Margin (%) for last 3 fiscal years in a **perfectly formatted Markdown table** [SSX]. Calculate Revenue YoY Growth (%). Verify data. Use '-' minimally.
-        | Metric                           | FYXXXX | FYYYYY | FYZZZZ | Source(s) |
-        |----------------------------------|--------|--------|--------|-----------|
-        | Total Revenue (JPY M)            |        |        |        | [SSX]     |
-        | Revenue YoY Growth (%)           | N/A    |  X.X%  |  Y.Y%  | (Calc)    |
-        | Net Income (Parent) (JPY M)      |        |        |        | [SSX]     |
-        | Operating Margin (%)             |        |        |        | [SSY]     |
-    *   Identify key profitable/high-growth divisions/segments [SSZ, DOCX].
-    *   **Analyze Investment Capacity & Priorities (for {context_company_name}):** Based on financial trends [SSX] and investment plans/commentary in documents [DOCX], assess {company_name}'s likely capacity AND strategic priorities for IT/DX/Operations investments. Where are they most likely to spend? Are there signs of budget constraints {context_company_name} should be aware of? [DOCX, SSX].
+Present Revenue, Net Income (Parent), and Operating Margin (%) for last 3 fiscal years in a **perfectly formatted Markdown table** [SSX]. Calculate Revenue YoY Growth (%). Verify data. Use '-' minimally.
+| Metric                           | FYXXXX | FYYYYY | FYZZZZ | Source(s) |
+    |----------------------------------|--------|--------|--------|-----------|
+    | Total Revenue (JPY M)            |        |        |        | [SSX]     |
+    | Revenue YoY Growth (%)           | N/A    |  X.X%  |  Y.Y%  | (Calc)    |
+    | Net Income (Parent) (JPY M)      |        |        |        | [SSX]     |
+    | Operating Margin (%)             |        |        |        | [SSY]     |
+Identify key profitable/high-growth divisions/segments [SSZ, DOCX].
+**Analyze Investment Capacity & Priorities (for {context_company_name}):** Based on financial trends [SSX] and investment plans/commentary in documents [DOCX], assess {company_name}'s likely capacity AND strategic priorities for IT/DX/Operations investments. Where are they most likely to spend? Are there signs of budget constraints {context_company_name} should be aware of? [DOCX, SSX].
 
 ## 4. Strategic Initiatives & {context_company_name} Opportunity Mapping ({company_name})
-    *   Synthesize **{company_name}**'s major stated [SSX] AND internally documented [DOCX] strategic initiatives relevant to {context_company_name}'s offerings (DX, Cloud, Security, Network, ESG Tech, Ops Efficiency).
-    *   For each key initiative (list 3-5):
-        *   **Initiative Name/Focus:** [Specific name/goal] [Source: DOCX or SSX]
-        *   **Objective & Timeline:** [Details] [Source: DOCX or SSX]
-        *   **Investment (if known):** [Details] [Source: DOCX or SSX]
-        *   **{context_company_name} Value Proposition & Differentiation (CRITICAL):** Explicitly map relevant **{context_company_name}** capabilities AND strengths (incl. NEC Group synergy). Crucially, articulate **WHY {context_company_name} is uniquely positioned** to help {company_name} succeed with this initiative compared to potential competitors. What is our specific value-add?
+Synthesize **{company_name}**'s major stated [SSX] AND internally documented [DOCX] strategic initiatives relevant to {context_company_name}'s offerings (DX, Cloud, Security, Network, ESG Tech, Ops Efficiency).
+For each key initiative (list 3-5):
+**Initiative Name/Focus:** [Specific name/goal] [Source: DOCX or SSX]
+**Objective & Timeline:** [Details] [Source: DOCX or SSX]
+**Investment (if known):** [Details] [Source: DOCX or SSX]
+**{context_company_name} Value Proposition & Differentiation (CRITICAL):** Explicitly map relevant **{context_company_name}** capabilities AND strengths (incl. NEC Group synergy). Crucially, articulate **WHY {context_company_name} is uniquely positioned** to help {company_name} succeed with this initiative compared to potential competitors. What is our specific value-add?
 
 ## 5. Decision-Making Landscape & Key Stakeholders ({company_name})
-    *   Outline **{company_name}**'s relevant decision-making structure (IT/DX/Ops/Relevant BUs) based on BOTH public data [SSX] and insights from provided documents (e.g., Org charts, project roles) [DOCX]. Identify key departments, committees, individuals.
-    *   Identify key executives AND relevant managers/leaders (names, titles, roles) based on latest verifiable information [SSY, DOCX].
-    *   **Analyze Influence & Engagement Strategy (for {context_company_name}):** Who are the key decision-makers, influencers, and potential champions/detractors for {context_company_name}'s proposed offerings? Outline a high-level relationship mapping strategy for {context_company_name}.
+Outline **{company_name}**'s relevant decision-making structure (IT/DX/Ops/Relevant BUs) based on BOTH public data [SSX] and insights from provided documents (e.g., Org charts, project roles) [DOCX]. Identify key departments, committees, individuals.
+Identify key executives AND relevant managers/leaders (names, titles, roles) based on latest verifiable information [SSY, DOCX].
+**Analyze Influence & Engagement Strategy (for {context_company_name}):** Who are the key decision-makers, influencers, and potential champions/detractors for {context_company_name}'s proposed offerings? Outline a high-level relationship mapping strategy for {context_company_name}.
 
 ## 6. Critical Business Challenges & {context_company_name} Solution Fit ({company_name})
-    *   Enumerate **{company_name}**'s major challenges based on official sources [SSX] AND explicitly stated pain points from provided documents [DOCX]. Categorize if possible.
-        *   **Challenge 1:** [Specific challenge] [Source: DOCX or SSX] -> **{context_company_name} Solution Fit & Value Proposition:** [Explain precisely how {context_company_name}'s specific service/capability directly addresses this challenge and delivers tangible value (e.g., cost savings, efficiency gains, risk reduction, enhanced capability)].
-        *   *(List 3-5 key verifiable challenges)*
-    *   Focus on challenges where {context_company_name} has a strong, differentiated solution.
+Enumerate **{company_name}**'s major challenges based on official sources [SSX] AND explicitly stated pain points from provided documents [DOCX]. Categorize if possible.
+**Challenge 1:** [Specific challenge] [Source: DOCX or SSX] -> **{context_company_name} Solution Fit & Value Proposition:** [Explain precisely how {context_company_name}'s specific service/capability directly addresses this challenge and delivers tangible value (e.g., cost savings, efficiency gains, risk reduction, enhanced capability)].
+*(List 3-5 key verifiable challenges)*
+Focus on challenges where {context_company_name} has a strong, differentiated solution.
 
 ## 7. Technology Environment & {context_company_name} Synergy ({company_name})
-    *   Summarize **{company_name}**'s current technology landscape (key systems, vendors, platforms) based on available information [SSX, DOCX]. Identify potential areas of technological debt or opportunity.
-    *   Identify likely technology focus areas/investments for the next 3 years [DOCX, SSX].
-    *   **Analyze {context_company_name} Synergy & Integration Potential:** Map {company_name}'s tech focus to the **{context_company_name}** portfolio. Highlight where **NEC Group synergy** offers unique advantages. Assess how well {context_company_name} solutions can integrate with {company_name}'s existing environment.
+Summarize **{company_name}**'s current technology landscape (key systems, vendors, platforms) based on available information [SSX, DOCX]. Identify potential areas of technological debt or opportunity.
+Identify likely technology focus areas/investments for the next 3 years [DOCX, SSX].
+**Analyze {context_company_name} Synergy & Integration Potential:** Map {company_name}'s tech focus to the **{context_company_name}** portfolio. Highlight where **NEC Group synergy** offers unique advantages. Assess how well {context_company_name} solutions can integrate with {company_name}'s existing environment.
 
 ## 8. 3-Year Engagement Strategy & Action Plan (for {context_company_name})
-    *   Provide a high-level, phased engagement plan concept for **{context_company_name}**. Focus on strategic themes derived from {company_name}'s needs (identified via DOCX and SSX), aligned with {context_company_name}'s capabilities and differentiators. Use a **perfectly formatted Markdown table**.
-        | Phase / Timeline        | Strategic Engagement Theme (for {context_company_name}) | Key {company_name} Need/Initiative Addressed | Potential {context_company_name} Offerings (Highlight Differentiation) | Target Stakeholders ({company_name}) | Source (Doc/Web) | Proposed Next Steps (Actionable for {context_company_name}) | Potential Hurdles / Considerations (for {context_company_name}) |
-        |-------------------------|---------------------------------------------------------|-----------------------------------------------|------------------------------------------------------------------|--------------------------------------|------------------|---------------------------------------------------------|--------------------------------------------------------------------|
-        | **Year 1: Build & Prove**|                                                         |                                               |                                                                  |                                      | [DOCX / SSX]     |                                                         |                                                                    |
-        | (Q1-Q2)                 | Address network pain points; Build trust              | Network readiness for Cloud [Sec 4]           | Network Solutions (Assessment, SD-WAN Design - emphasize NESIC expertise) | IT Infra / CIO [Sec 5]               | DOC1, Slide 5    | Propose assessment workshop; Present relevant case study        | Budget cycle alignment; Internal resistance to change              |
-        | (Q3-Q4)                 | Position for strategic DX security                      | Cybersecurity for New Platform [Sec 6]        | Cybersecurity (Consulting, MSSP intro - leverage NEC Group Intel)   | CISO / DX Team [Sec 5]               | DOC2             | Targeted security briefing; Proof of concept proposal             | Competition from incumbent security vendors                        |
-        | **Year 2: Expand & Deepen** |                                                         |                                               |                                                                  |                                      | [DOCX / SSX]     |                                                         |                                                                    |
-        | (Q1-Q2)                 | Enable data-driven insights                             | Data Silos Challenge [Sec 6]                  | SI (Integration - highlight multi-vendor skill), Data Analytics Support | DX Team / BU Lead [Sec 5]            | DOC1, p. 10      | Co-creation workshop on data strategy; Pilot proposal           | Data governance complexity; Resource availability at client      |
-        | (Q3-Q4)                 | Demonstrate efficiency gains                            | Potential Margin Pressure [Sec 3]             | Managed Services (Network/Cloud - focus on ROI), BPO              | IT Ops / Finance [Sec 5]             | SSX              | Customized TCO/ROI analysis; Service level agreement draft      | Proving value beyond cost reduction; Contract negotiation          |
-        | **Year 3: Partner & Grow**|                                                         |                                               |                                                                  |                                      | [DOCX / SSX]     |                                                         |                                                                    |
-        | (Ongoing)               | Solidify Strategic Partnership                          | Scaling successes, Long-term DX roadmap       | Full Managed Services, DX Consulting, Joint Innovation Programs  | CIO / Strategy / BU Heads [Sec 5]    | Synthesis        | Joint strategic roadmap session; Executive sponsorship engagement | Maintaining momentum; Aligning with evolving client strategy       |
-    *   Ensure each engagement theme links directly to verified needs/initiatives [DOCX, SSX], leverages specific {context_company_name} strengths, and includes concrete, actionable next steps for the {context_company_name} team.
+Provide a high-level, phased engagement plan concept for **{context_company_name}**. Focus on strategic themes derived from {company_name}'s needs (identified via DOCX and SSX), aligned with {context_company_name}'s capabilities and differentiators. Use a **perfectly formatted Markdown table**.
+    | Phase / Timeline        | Strategic Engagement Theme (for {context_company_name}) | Key {company_name} Need/Initiative Addressed | Potential {context_company_name} Offerings (Highlight Differentiation) | Target Stakeholders ({company_name}) | Source (Doc/Web) | Proposed Next Steps (Actionable for {context_company_name}) | Potential Hurdles / Considerations (for {context_company_name}) |
+    |-------------------------|---------------------------------------------------------|-----------------------------------------------|------------------------------------------------------------------|--------------------------------------|------------------|---------------------------------------------------------|--------------------------------------------------------------------|
+    | **Year 1: Build & Prove**|                                                         |                                               |                                                                  |                                      | [DOCX / SSX]     |                                                         |                                                                    |
+    | (Q1-Q2)                 | Address network pain points; Build trust              | Network readiness for Cloud [Sec 4]           | Network Solutions (Assessment, SD-WAN Design - emphasize NESIC expertise) | IT Infra / CIO [Sec 5]               | DOC1, Slide 5    | Propose assessment workshop; Present relevant case study        | Budget cycle alignment; Internal resistance to change              |
+    | (Q3-Q4)                 | Position for strategic DX security                      | Cybersecurity for New Platform [Sec 6]        | Cybersecurity (Consulting, MSSP intro - leverage NEC Group Intel)   | CISO / DX Team [Sec 5]               | DOC2             | Targeted security briefing; Proof of concept proposal             | Competition from incumbent security vendors                        |
+    | **Year 2: Expand & Deepen** |                                                         |                                               |                                                                  |                                      | [DOCX / SSX]     |                                                         |                                                                    |
+    | (Q1-Q2)                 | Enable data-driven insights                             | Data Silos Challenge [Sec 6]                  | SI (Integration - highlight multi-vendor skill), Data Analytics Support | DX Team / BU Lead [Sec 5]            | DOC1, p. 10      | Co-creation workshop on data strategy; Pilot proposal           | Data governance complexity; Resource availability at client      |
+    | (Q3-Q4)                 | Demonstrate efficiency gains                            | Potential Margin Pressure [Sec 3]             | Managed Services (Network/Cloud - focus on ROI), BPO              | IT Ops / Finance [Sec 5]             | SSX              | Customized TCO/ROI analysis; Service level agreement draft      | Proving value beyond cost reduction; Contract negotiation          |
+    | **Year 3: Partner & Grow**|                                                         |                                               |                                                                  |                                      | [DOCX / SSX]     |                                                         |                                                                    |
+    | (Ongoing)               | Solidify Strategic Partnership                          | Scaling successes, Long-term DX roadmap       | Full Managed Services, DX Consulting, Joint Innovation Programs  | CIO / Strategy / BU Heads [Sec 5]    | Synthesis        | Joint strategic roadmap session; Executive sponsorship engagement | Maintaining momentum; Aligning with evolving client strategy       |
+Ensure each engagement theme links directly to verified needs/initiatives [DOCX, SSX], leverages specific {context_company_name} strengths, and includes concrete, actionable next steps for the {context_company_name} team.
 
 ## 9. Competitive Landscape & {context_company_name}'s Edge ({company_name} Context)
-    *   Identify **{company_name}**'s key incumbent IT vendors/partners *if explicitly mentioned* [SSX, DOCX].
-    *   **Analyze {context_company_name}'s Differentiators (MANDATORY):** Based on {company_name} info [SSX, DOCX] and {context_company_name} capabilities: Explicitly articulate **{context_company_name}'s** competitive advantages *for this specific client*. Focus on 2-3 key differentiators (e.g., unique NEC Group tech synergy relevant to {company_name}'s industry [DOCX], superior local support structure matching {company_name}'s footprint [DOCX], proven SI methodology for their specific challenge [Public Info]). Avoid generic statements. Silently omit if no verifiable competitor context is found.
+Identify **{company_name}**'s key incumbent IT vendors/partners *if explicitly mentioned* [SSX, DOCX].
+**Analyze {context_company_name}'s Differentiators (MANDATORY):** Based on {company_name} info [SSX, DOCX] and {context_company_name} capabilities: Explicitly articulate **{context_company_name}'s** competitive advantages *for this specific client*. Focus on 2-3 key differentiators (e.g., unique NEC Group tech synergy relevant to {company_name}'s industry [DOCX], superior local support structure matching {company_name}'s footprint [DOCX], proven SI methodology for their specific challenge [Public Info]). Avoid generic statements. Silently omit if no verifiable competitor context is found.
 
 ## 10. Success Metrics & KPIs (for {context_company_name} Internal Use)
-    *   Define 3-5 specific, measurable Key Performance Indicators (KPIs) for **{context_company_name}** to track this plan's success over 3 years. Base these on opportunities identified from verifiable {company_name} data [DOCX, SSX].
-        *   KPI 1: Number of C-level / Key Stakeholder (Sec 5) meetings secured focusing on strategic initiatives (Sec 4) (Target: X/year).
-        *   KPI 2: Pipeline Value (£/¥/$) generated specifically targeting opportunities identified in Sec 4 & 6 (Target: Y value/year).
-        *   KPI 3: Win Rate for proposals leveraging key differentiators (Sec 9) (Target: Z%).
-        *   KPI 4: Expansion into New {context_company_name} Core Service Areas within {company_name} (Target: Enter A new areas by Year 3).
-        *   KPI 5: Client Satisfaction Score / Net Promoter Score from {company_name} (if measurable) (Target: Maintain/Improve score B).
-    *   Briefly explain the rationale linking these internal KPIs to successful strategy execution based on the {company_name} analysis.
+Define 3-5 specific, measurable Key Performance Indicators (KPIs) for **{context_company_name}** to track this plan's success over 3 years. Base these on opportunities identified from verifiable {company_name} data [DOCX, SSX].
+KPI 1: Number of C-level / Key Stakeholder (Sec 5) meetings secured focusing on strategic initiatives (Sec 4) (Target: X/year).
+KPI 2: Pipeline Value (£/¥/$) generated specifically targeting opportunities identified in Sec 4 & 6 (Target: Y value/year).
+KPI 3: Win Rate for proposals leveraging key differentiators (Sec 9) (Target: Z%).
+KPI 4: Expansion into New {context_company_name} Core Service Areas within {company_name} (Target: Enter A new areas by Year 3).
+KPI 5: Client Satisfaction Score / Net Promoter Score from {company_name} (if measurable) (Target: Maintain/Improve score B).
+Briefly explain the rationale linking these internal KPIs to successful strategy execution based on the {company_name} analysis.
 
 ## 11. Potential Risks & Mitigation Strategies (for {context_company_name})
-    *   Identify 2-4 key risks **to {context_company_name}** in pursuing this account strategy (e.g., strong incumbent relationship [DOCX/SSX?], budget cuts at client [DOCX/SSX?], internal {context_company_name} resource constraints, misalignment on strategic direction, failure to demonstrate ROI). Cite source if risk is documented.
-    *   For each risk, propose a brief mitigation strategy for the {context_company_name} team (e.g., "Build multi-level relationships beyond IT", "Develop flexible pricing models", "Secure executive sponsorship internally", "Focus on quantifiable business outcomes in proposals").
+Identify 2-4 key risks **to {context_company_name}** in pursuing this account strategy (e.g., strong incumbent relationship [DOCX/SSX?], budget cuts at client [DOCX/SSX?], internal {context_company_name} resource constraints, misalignment on strategic direction, failure to demonstrate ROI). Cite source if risk is documented.
+For each risk, propose a brief mitigation strategy for the {context_company_name} team (e.g., "Build multi-level relationships beyond IT", "Develop flexible pricing models", "Secure executive sponsorship internally", "Focus on quantifiable business outcomes in proposals").
 
 ## 12. Overall Strategic Recommendation & Rationale (for {context_company_name})
-    *   Provide a concluding single paragraph (~300–500 words) synthesizing the most critical findings about **{company_name}** (from web [SSX] + docs [DOCX]) and presenting a clear **strategic recommendation** for {context_company_name}'s 3-year engagement.
-    *   Reiterate the primary alignment opportunities, emphasizing the unique value proposition and differentiators {context_company_name} offers. Incorporate key quantitative points.
-    *   Briefly incorporate the key risks (from Sec 11) and the overall confidence level in the proposed strategy.
-    *   Example structure: "Based on {company_name}'s documented [DOCX] investment in X and stated challenge Y [SSX], the primary strategic thrust for {context_company_name} should be Z, leveraging our differentiated capability in A. Key opportunities lie in B and C over the next 3 years. While risks such as [Risk 1] exist, mitigation through [Mitigation 1] makes this a high-potential strategic account requiring focused executive engagement and resource allocation..."
-    *   This summary is the final strategic directive for the {context_company_name} account team. Do not introduce new data or assumptions.
+Provide a concluding single paragraph (~300–500 words) synthesizing the most critical findings about **{company_name}** (from web [SSX] + docs [DOCX]) and presenting a clear **strategic recommendation** for {context_company_name}'s 3-year engagement.
+Reiterate the primary alignment opportunities, emphasizing the unique value proposition and differentiators {context_company_name} offers. Incorporate key quantitative points.
+Briefly incorporate the key risks (from Sec 11) and the overall confidence level in the proposed strategy.
+Example structure: "Based on {company_name}'s documented [DOCX] investment in X and stated challenge Y [SSX], the primary strategic thrust for {context_company_name} should be Z, leveraging our differentiated capability in A. Key opportunities lie in B and C over the next 3 years. While risks such as [Risk 1] exist, mitigation through [Mitigation 1] makes this a high-potential strategic account requiring focused executive engagement and resource allocation..."
+This summary is the final strategic directive for the {context_company_name} account team. Do not introduce new data or assumptions.
 
 --- Final Checks & Formatting ---
 
 Source and Accuracy Requirements:
-*   **Accuracy:** All data about **{company_name}** MUST be grounded [SSX] or documented [DOCX]. Reflect latest info. {context_company_name} capability mapping based on provided context/public knowledge. Silently omit unverified data. Verify table data meticulously.
-*   **Traceability:** Each fact/figure includes correct citation (`[SSX]` or `[DOCX, reference]`).
-*   **Single-Entity Coverage:** Strictly reference **{company_name}**; omit similarly named entities.
+**Accuracy:** All data about **{company_name}** MUST be grounded [SSX] or documented [DOCX]. Reflect latest info. {context_company_name} capability mapping based on provided context/public knowledge. Silently omit unverified data. Verify table data meticulously.
+**Traceability:** Each fact/figure includes correct citation (`[SSX]` or `[DOCX, reference]`).
+**Single-Entity Coverage:** Strictly reference **{company_name}**; omit similarly named entities.
 
-# MODIFIED: Add enhanced completion checks
 {formatted_completion_base + enhanced_completion_checks}
 
-# MODIFIED: Add enhanced review checks
 {formatted_final_review_base + enhanced_review_checks}
 
-{formatted_final_source_list} # Reminder this is SSX only
+{formatted_final_source_list}
 {formatted_base_formatting}
 """
 
