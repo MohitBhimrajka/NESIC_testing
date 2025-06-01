@@ -292,28 +292,67 @@ def get_analysis_prompt(company_name: str, language: str = "English", context_co
     formatted_terms = {}
     for key, value in terms.items():
         try:
-            # Attempt to format with all placeholders, will work if all are present
-            formatted_terms[key] = value.format(company_name=company_name, context_company_name=context_company_name, terms=terms) # Added terms for recursive use
-        except KeyError:
-            # Fallback for partial replacements if some placeholders are missing in a specific term string
+            # Simple replacement without circular reference
             temp_value = value.replace("{company_name}", company_name)
             temp_value = temp_value.replace("{context_company_name}", context_company_name)
-            # Add other specific replacements if needed, or a general loop
             formatted_terms[key] = temp_value
         except Exception as e:
-            # print(f"Warning: Could not format term '{key}': {e}") # Optional: for debugging
-            formatted_terms[key] = value # Fallback to original if complex formatting fails
+            # Fallback to original if formatting fails
+            formatted_terms[key] = value
     terms = formatted_terms
 
-    # Re-format instruction blocks using the fully populated 'terms'
-    formatted_base_formatting = BASE_FORMATTING_INSTRUCTIONS_JSON.format(language=language, terms=terms, context_company_name=context_company_name)
-    formatted_missing_info = HANDLING_MISSING_INFO_INSTRUCTION_JSON.format(company_name=company_name, terms=terms)
-    formatted_json_processing = JSON_DATA_PROCESSING_INSTRUCTIONS.format(company_name=company_name, terms=terms, context_company_name=context_company_name)
-    formatted_won_deal_logic = WON_DEAL_FILTERING_LOGIC.format(company_name=company_name, terms=terms)
-    formatted_nesic_perspective = NESIC_PERSPECTIVE_INSTRUCTION.format(company_name=company_name, context_company_name=context_company_name)
-    formatted_segmentation = SEGMENTATION_INSTRUCTION.format(terms=terms, context_company_name=context_company_name)
-    formatted_whitespace = WHITESPACE_ANALYSIS_INSTRUCTION.format(context_company_name=context_company_name, terms=terms)
-    base_formatted_completion_checks = COMPLETION_CHECKS_JSON.format(language=language, terms=terms, context_company_name=context_company_name)
+    # Create a safe replacement function for the instruction blocks
+    def safe_format(text, **kwargs):
+        """Safely format text by replacing placeholders one by one"""
+        result = text
+        for key, value in kwargs.items():
+            result = result.replace(f"{{{key}}}", str(value))
+        return result
+
+    # Re-format instruction blocks using the safe format function
+    formatted_base_formatting = safe_format(
+        BASE_FORMATTING_INSTRUCTIONS_JSON,
+        language=language,
+        context_company_name=context_company_name,
+        **{f"terms['{k}']": v for k, v in terms.items()}
+    )
+    formatted_missing_info = safe_format(
+        HANDLING_MISSING_INFO_INSTRUCTION_JSON,
+        company_name=company_name,
+        **{f"terms['{k}']": v for k, v in terms.items()}
+    )
+    formatted_json_processing = safe_format(
+        JSON_DATA_PROCESSING_INSTRUCTIONS,
+        company_name=company_name,
+        context_company_name=context_company_name,
+        **{f"terms['{k}']": v for k, v in terms.items()}
+    )
+    formatted_won_deal_logic = safe_format(
+        WON_DEAL_FILTERING_LOGIC,
+        company_name=company_name,
+        **{f"terms['{k}']": v for k, v in terms.items()}
+    )
+    formatted_nesic_perspective = safe_format(
+        NESIC_PERSPECTIVE_INSTRUCTION,
+        company_name=company_name,
+        context_company_name=context_company_name
+    )
+    formatted_segmentation = safe_format(
+        SEGMENTATION_INSTRUCTION,
+        context_company_name=context_company_name,
+        **{f"terms['{k}']": v for k, v in terms.items()}
+    )
+    formatted_whitespace = safe_format(
+        WHITESPACE_ANALYSIS_INSTRUCTION,
+        context_company_name=context_company_name,
+        **{f"terms['{k}']": v for k, v in terms.items()}
+    )
+    base_formatted_completion_checks = safe_format(
+        COMPLETION_CHECKS_JSON,
+        language=language,
+        context_company_name=context_company_name,
+        **{f"terms['{k}']": v for k, v in terms.items()}
+    )
 
     prompt = f"""
 {persona}
@@ -452,7 +491,6 @@ Output the analysis report directly in **{language}** using **Markdown**. Do not
 
 
     return prompt
-
 # --- Example Usage (Commented Out) ---
 # company_name_example = "Example Client Corp"
 # context_company_name_example = "NESIC"
